@@ -2,7 +2,6 @@ import os
 import torch
 import shutil
 
-from functools import partial
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
@@ -140,7 +139,7 @@ def get_critierion(config):
     return loss_function
 
 
-def save_checkpoint(model, model_dir, epoch, val_loss, val_video_acc, val_audio_acc):
+def save_checkpoint(model, model_dir, epoch, val_loss, accuracy):
     # Saves the model checkpoint
     # Parameters
     # ----------
@@ -164,7 +163,7 @@ def save_checkpoint(model, model_dir, epoch, val_loss, val_video_acc, val_audio_
         },
         os.path.join(
             model_dir,
-            f"model_{epoch}_{val_loss}_{val_video_acc}_{val_audio_acc}.pt",
+            f"model_{epoch}_{val_loss}_{accuracy}.pt",
         ),
     )
 
