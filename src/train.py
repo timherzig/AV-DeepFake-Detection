@@ -4,6 +4,7 @@ import numpy as np
 
 from tqdm import tqdm
 from functools import partial
+from torch.nn.functional import softmax
 from torch.utils._triton import has_triton
 from torch.utils.tensorboard import SummaryWriter
 
@@ -17,8 +18,8 @@ from src.util.utils import (
 )
 
 from src.data.data import get_dataloaders
-
 from src.util.logger import log_train_step, log_val_step
+from src.util.metrics import calculate_metrics
 
 
 def train(config, args):
@@ -27,9 +28,9 @@ def train(config, args):
     if not has_triton():
         raise RuntimeError("Triton is not available")
 
-    writer = SummaryWriter(log_dir=log_dir)
-
     root, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
+
+    writer = SummaryWriter(log_dir=log_dir)
 
     (train_dl, train_len), (val_dl, val_len), _ = get_dataloaders(
         ["train", "val"], args.data_root, config
@@ -57,26 +58,29 @@ def train(config, args):
             device,
         )
 
-        val_loss = val_epoch(
+        val_loss, val_acc, val_f1, val_eer = val_epoch(
             model,
             criterion,
             val_dl,
             val_len,
             epoch,
+            config,
             writer,
             device,
+        )
+
+        print(
+            f"Epoch {epoch} - Val Loss: {val_loss} - Val Acc: {val_acc} - Val F1: {val_f1} - Val EER: {val_eer}"
         )
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             save_checkpoint(
                 model,
-                optimizer,
-                scheduler,
-                epoch,
-                best_val_loss,
                 model_dir,
-                config,
+                epoch,
+                val_loss,
+                val_acc,
             )
 
 
@@ -97,26 +101,23 @@ def train_epoch(
     running_loss = 0.0
 
     with tqdm(
-        train_dl, total=math.ceil(train_len / train_dl.batch_size), unit="b"
+        train_dl, total=math.ceil(train_len / config.train.batch_size), unit="b"
     ) as pbar:
         for i, batch in enumerate(pbar):
             pbar.set_description(f"Epoch {epoch} - Train")
 
-            (x, y), info = batch
-
+            x, y = batch
             x = x.to(device)
             y = y.to(device)
 
             optimizer.zero_grad()
-
             y_pred = model(x)
-            loss = criterion(y_pred, y)
 
+            loss = criterion(y_pred, y)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
-
             running_loss = logger(i, running_loss, pbar, train_len)
 
     return running_loss
@@ -128,19 +129,26 @@ def val_epoch(
     val_dl,
     val_len,
     epoch,
+    config,
     writer,
     device,
 ):
     model.eval()
-    logger = partial(log_val_step, writer=writer)
+    logger = partial(log_val_step, config=config, epoch=epoch, writer=writer)
+    iters = 0
     running_loss = 0.0
 
-    with tqdm(val_dl, total=math.ceil(val_len / val_dl.batch_size), unit="b") as pbar:
+    running_y_true = np.array([])
+    running_y_pred = np.array([])
+
+    with tqdm(
+        val_dl, total=math.ceil(val_len / config.train.batch_size), unit="b"
+    ) as pbar:
         for i, batch in enumerate(pbar):
-            pbar.set_description(f"Epoch {epoch} - Val")
+            pbar.set_description(f"Epoch {epoch} - Val  ")
+            iters += 1
 
-            (x, y), info = batch
-
+            x, y = batch
             x = x.to(device)
             y = y.to(device)
 
@@ -148,8 +156,23 @@ def val_epoch(
                 y_pred = model(x)
                 loss = criterion(y_pred, y)
 
-                running_loss += loss.item()
+            y_pred = softmax(y_pred, dim=1)
+            y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
+            y = torch.argmax(y, dim=1).cpu().detach().numpy()
 
-                running_loss = logger(loss.item(), i, epoch)
+            running_y_true = np.concatenate([running_y_true, y])
+            running_y_pred = np.concatenate([running_y_pred, y_pred])
 
-    return running_loss
+            running_loss += loss.item()
+            logger(
+                i,
+                running_loss,
+                pbar,
+                val_len,
+            )
+
+    running_loss /= iters
+
+    acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
+
+    return running_loss, acc, f1, eer

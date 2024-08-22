@@ -417,7 +417,10 @@ class WavLM(nn.Module):
         return self.extract_features(x, output_layer=output_layer)[0]
 
     def get_encoding_dim(self):
-        return self.embed
+        return self.cfg.encoder_embed_dim
+
+    def get_temporal_dim(self, window_size):
+        return 2 * window_size - 1
 
 
 class ConvFeatureExtractionModel(nn.Module):

@@ -9,5 +9,16 @@ class Decoder(nn.Module):
 
         self.decoder = None
 
+        if config.model.decoder.name.lower() == "mlp":
+            from src.model.decoder.mlp.mlp import MLP
+
+            self.decoder = MLP(config)
+        elif config.model.decoder.name.lower() == "gmlp":
+            pass
+        elif config.model.decoder.name.lower() == "aasist":
+            from src.model.decoder.aasist.aasist import AASIST
+
+            self.decoder = AASIST(config)
+
     def forward(self, x):
         return self.decoder(x)
