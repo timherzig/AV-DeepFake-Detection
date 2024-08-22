@@ -1,2 +1,6 @@
 name: "mlp"
 version: "default"
+temporal_dim: 15
+encoding_dim: 512
+hidden_size: 128
+output_size: 2

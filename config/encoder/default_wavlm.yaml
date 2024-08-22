@@ -1,5 +1,5 @@
 name: "wavlm"
 version: "base"
 pretrained: True
-pretrained_path: "encoders/audio/wavlm/WavLM-Base+.pt"
+pretrained_path: "encoder_checkpoints/wavlm/WavLM-Base+.pt"
 output_layer: 3
