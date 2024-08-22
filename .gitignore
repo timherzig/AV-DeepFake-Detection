@@ -162,5 +162,6 @@ cython_debug/
 #.idea/
 
 slurm/
+checkpoints/
 encoder_checkpoints/
 decoder_checkpoints/
