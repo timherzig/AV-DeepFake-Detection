@@ -1,4 +1,4 @@
-def log_train_step(batch_idx, loss, tepoch, config, epoch, writer, train_len):
+def log_train_step(batch_idx, loss, pbar, train_len, config, epoch, writer):
     if batch_idx % config.train.log_interval == 0 and batch_idx > 0:
         niter = epoch * train_len + batch_idx
 
@@ -6,14 +6,16 @@ def log_train_step(batch_idx, loss, tepoch, config, epoch, writer, train_len):
 
         writer.add_scalar("Loss/train", loss, niter)
 
-        tepoch.set_postfix(loss=loss)
+        pbar.set_postfix(loss=loss)
 
         return 0.0
     else:
         return loss
 
 
-def log_val_step(loss, niter, epoch, writer):
-    writer.add_scalar("Loss/val", loss, niter * epoch)
-
-    print(f"Val Epoch {epoch}:        Loss: {loss}")
+def log_val_step(batch_idx, loss, pbar, val_len, config, epoch, writer):
+    if batch_idx % config.train.log_interval == 0 and batch_idx > 0:
+        niter = epoch * val_len + batch_idx
+        loss = loss / batch_idx
+        writer.add_scalar("Loss/val", loss, niter)
+        pbar.set_postfix(loss=loss)
