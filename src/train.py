@@ -80,7 +80,7 @@ def train(config, args):
                 model_dir,
                 epoch,
                 val_loss,
-                val_acc,
+                val_f1,
             )
 
 
@@ -112,6 +112,9 @@ def train_epoch(
 
             optimizer.zero_grad()
             y_pred = model(x)
+
+            if "logits" not in config.train.loss:
+                y_pred = softmax(y_pred, dim=1)
 
             loss = criterion(y_pred, y)
             loss.backward()
@@ -154,6 +157,9 @@ def val_epoch(
 
             with torch.no_grad():
                 y_pred = model(x)
+
+                if "logits" not in config.train.loss:
+                    y_pred = softmax(y_pred, dim=1)
                 loss = criterion(y_pred, y)
 
             y_pred = softmax(y_pred, dim=1)

@@ -18,7 +18,7 @@ class Encoder(nn.Module):
             self.encoder = WavLM(cfg)
 
         # VIDEO
-        elif self.config.model.encoder.name.lower() == "VideoMamba":
+        elif self.config.model.encoder.name.lower() == "videomamba":
             from src.model.encoders.videomamba.videomamba import (
                 videomamba_middle,
                 videomamba_small,
@@ -37,6 +37,9 @@ class Encoder(nn.Module):
     def forward(self, x):
         if self.config.model.encoder.name.lower() == "wavlm":
             return self.encoder(x, output_layer=self.config.model.encoder.output_layer)
+        elif self.config.model.encoder.name.lower() == "videomamba":
+            return self.encoder(x)
+
         return self.encoder(x)
 
     def get_encoding_dim(self):

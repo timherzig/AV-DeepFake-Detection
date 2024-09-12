@@ -10,12 +10,14 @@ from src.model.model import Model
 
 def get_config(config_path):
     config = OmegaConf.load(config_path)
-    config.model.encoder = OmegaConf.load(config.model.encoder)
-    config.model.decoder = OmegaConf.load(config.model.decoder)
+    if isinstance(config.model.encoder, str):
+        config.model.encoder = OmegaConf.load(config.model.encoder)
+    if isinstance(config.model.decoder, str):
+        config.model.decoder = OmegaConf.load(config.model.decoder)
     return config
 
 
-def get_paths(config, create_folders=True):
+def get_paths(config, create_folders=True, evaluate=False):
     # Creates the necessary directories and saves the configuration object, returns the paths to the root, log and model directories
     # Parameters
     # ----------
@@ -48,16 +50,16 @@ def get_paths(config, create_folders=True):
 
     if config.debug:
         root = os.path.join("checkpoints", "debug")
-        if os.path.exists(root):
+        if os.path.exists(root) and not evaluate:
             shutil.rmtree(root)
 
     log_dir = os.path.join(root, "logs")
-    os.makedirs(log_dir, exist_ok=True)
-
     model_dir = os.path.join(root, "models")
-    os.makedirs(model_dir, exist_ok=True)
 
-    OmegaConf.save(config, os.path.join(root, "config.yaml"))
+    if not evaluate:
+        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(model_dir, exist_ok=True)
+        OmegaConf.save(config, os.path.join(root, "config.yaml"))
 
     return root, log_dir, model_dir
 
@@ -84,9 +86,10 @@ def get_model_and_checkpoint(config, model_dir, resume=True):
     if resume:
         checkpoints = os.listdir(model_dir)
         if len(checkpoints) > 0:
-            checkpoints = sorted(checkpoints, key=lambda x: int(x.split("_")[1]))
+            checkpoints = sorted(checkpoints, key=lambda x: int(x.split("_")[2]))
             checkpoint = torch.load(os.path.join(model_dir, checkpoints[-1]))
             model.load_state_dict(checkpoint["model_state_dict"])
+            print(f"Loaded checkpoint: {os.path.join(model_dir, checkpoints[-1])}")
             return model, checkpoint
 
     return model, None
@@ -133,13 +136,15 @@ def get_critierion(config):
         loss_function = torch.nn.CrossEntropyLoss()
     elif config.train.loss == "bce":
         loss_function = torch.nn.BCELoss()
+    elif config.train.loss == "bce_logits":
+        loss_function = torch.nn.BCEWithLogitsLoss()
     else:
         raise ValueError(f"Invalid loss function: {config.train.loss}")
 
     return loss_function
 
 
-def save_checkpoint(model, model_dir, epoch, val_loss, accuracy):
+def save_checkpoint(model, model_dir, epoch, val_loss, f1):
     # Saves the model checkpoint
     # Parameters
     # ----------
@@ -163,8 +168,12 @@ def save_checkpoint(model, model_dir, epoch, val_loss, accuracy):
         },
         os.path.join(
             model_dir,
-            f"model_{epoch}_{val_loss}_{accuracy}.pt",
+            f"model_epoch_{epoch}_vloss_{val_loss:.3f}_vf1_{f1:.3f}.pt",
         ),
+    )
+
+    print(
+        f"Saved model: {epoch}_{val_loss}_{f1} to {os.path.join(model_dir, f'model_epoch_{epoch}__vloss_{val_loss:.3f}_vf1_{f1:.3f}.pt')}"
     )
 
 

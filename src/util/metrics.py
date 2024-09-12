@@ -9,7 +9,7 @@ def acc_s(y_true, y_pred):
     return correct / total
 
 
-def f1_s(y_true, y_pred, average="micro"):
+def f1_s(y_true, y_pred, average="binary"):
     return f1_score(y_true, y_pred, average=average)
 
 

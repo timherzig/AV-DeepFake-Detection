@@ -411,9 +411,9 @@ class VisionMamba(nn.Module):
         return hidden_states[:, 0, :]
 
     def forward(self, x, inference_params=None):
-        x = x.permute(0, 4, 1, 2, 3)
+        # x = x.permute(0, 4, 1, 2, 3)
         x = self.forward_features(x, inference_params)
-        # x = self.head(self.head_drop(x))
+        x = self.head(self.head_drop(x))
         return x
 
     def get_encoding_dim(self):
