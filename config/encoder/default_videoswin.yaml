@@ -1,0 +1,5 @@
+name: "videoswin"
+version: "tiny"
+pretrained: True
+pretrained_path: "encoder_checkpoints/videoswin/swin_base_patch244_window1677_sthv2.pth"
+num_frames: 8

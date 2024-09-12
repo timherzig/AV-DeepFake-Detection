@@ -1,6 +1,6 @@
 model:
   task: 'video' # 'audio' or 'video' or 'audio_video'
-  encoder: 'config/encoder/default_videomamba.yaml'
+  encoder: 'config/encoder/default_videoswin.yaml'
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
@@ -21,7 +21,7 @@ data:
 
 train:
   num_workers: 16
-  batch_size: 64
+  batch_size: 4
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"
