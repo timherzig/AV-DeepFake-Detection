@@ -2,11 +2,21 @@ import torch
 from functools import partial
 
 from src.data.av1m.av1m import av1m_get_splits, av1m_collate_fn
+from src.data.partialspoof.partialspoof import (
+    partialspoof_get_splits,
+    partialspoof_collate_fn,
+)
 
 
-def collate_fn(batch, config):
+def collate_fn(batch, config, test=False):
     if config.data.name == "av1m":
-        return av1m_collate_fn(batch, config)
+        return av1m_collate_fn(
+            batch, config, sliding_window=config.data.sliding_window, test=test
+        )
+    if config.data.name == "partialspoof":
+        return partialspoof_collate_fn(
+            batch, config, sliding_window=config.data.sliding_window, test=test
+        )
 
     return None
 
@@ -14,11 +24,13 @@ def collate_fn(batch, config):
 def get_splits(root, config, train_parts, val_parts, test_parts):
     if config.data.name == "av1m":
         return av1m_get_splits(root, config, train_parts, val_parts, test_parts)
+    if config.data.name == "partialspoof":
+        return partialspoof_get_splits(root, config, train_parts, val_parts, test_parts)
 
     return None, None, None
 
 
-def get_dataloaders(splits, root, config):
+def get_dataloaders(splits, root, config, test=False):
     # Returns the dataloaders for the specified splits along with the lengths of the datasets
     # Parameters
     # ----------
@@ -58,7 +70,7 @@ def get_dataloaders(splits, root, config):
 
     train_dl, val_dl, test_dl = None, None, None
 
-    c_fn = partial(collate_fn, config=config)
+    c_fn = partial(collate_fn, config=config, test=test)
 
     if "train" in splits:
         train_dl = torch.utils.data.DataLoader(
