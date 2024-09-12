@@ -1,0 +1,5 @@
+name: "videomamba"
+version: "tiny"
+pretrained: True
+pretrained_path: "encoder_checkpoints/videomamba/videomamba_t16_k400_f8_res224.pth"
+num_frames: 8

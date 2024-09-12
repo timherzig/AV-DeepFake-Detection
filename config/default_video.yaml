@@ -1,32 +1,33 @@
 model:
-  task: 'audio' # 'audio' or 'video' or 'audio_video'
-  encoder: 'config/encoder/default_wavlm.yaml'
+  task: 'video' # 'audio' or 'video' or 'audio_video'
+  encoder: 'config/encoder/default_videomamba.yaml'
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
 data:
-  name: 'av1m'
+  name: 'av1m' # 'av1m' or 'partialspoof' or 'halftruth'
   train_parts: "all"
   val_parts: "all"
   test_parts: "all"
-  train_size: 300000 # -1 means the complete set 
-  val_size: -1 # -1 means the complete set
+  train_size: 20000 # -1 means the complete set 
+  val_size: 5000 # -1 means the complete set
   test_size: -1 # -1 means the complete set
   shape: [3, 224, 224]
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
   window_size: 8 # frames
+  sliding_window: False
 
 train:
   num_workers: 16
-  batch_size: 128
+  batch_size: 64
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"
   lr: 0.0001
   step_size: 1
   gamma: 0.1
-  loss: "cross_entropy"
+  loss: "bce"
   log_interval: 100
   shuffle: True
