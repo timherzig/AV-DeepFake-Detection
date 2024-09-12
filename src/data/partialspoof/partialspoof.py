@@ -7,8 +7,9 @@ import random
 import numpy as np
 import webdataset as wds
 
-from math import floor
 from io import BytesIO
+from math import floor
+from scipy.io import wavfile
 from torch.nn.functional import pad
 
 
@@ -51,25 +52,24 @@ def cut_audio_test(audio, fake_segments, config):
     audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
 
     if len(fake_segments) == 0:
-        start1 = audio_frames  # In the test case always take the first and last audio segment for consistency
+        start1 = audio_frames
         start2 = audio_len
-        start3 = floor(audio_len / 2)  # Take the middle segment
         audio1 = audio[:, start1 : start1 + audio_frames]
         audio2 = audio[:, start2 : start2 + audio_frames]
-        audio3 = audio[:, start3 : start3 + audio_frames]
 
-        audio = torch.stack([audio1, audio2, audio3])
-        label = torch.tensor([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+        audio = torch.stack([audio1, audio2])
+        label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
 
     else:
         cut_audio = []
         label = []
+
         for transition in fake_segments:
             for t in transition:
                 t = t * sr + audio_frames
                 start = floor(t - audio_frames // 2)
-                audio1 = audio[:, start : start + audio_frames]
-                cut_audio.append(audio1)
+                audio_slice = audio[:, start : start + audio_frames]
+                cut_audio.append(audio_slice)
                 label.append([1.0, 0.0])
 
         audio = torch.stack(cut_audio)
@@ -99,7 +99,6 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     audio = torch.stack(sliced_audio)
 
     label = torch.zeros(audio.shape[0], 2)
-    label[:, 1] = 1.0
     fake_segments = [i for ii in fake_segments for i in ii]
 
     for t in fake_segments:
@@ -109,163 +108,28 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     return audio, label
 
 
-def cut_video(video, fake_segments, config):
-    n_frames = config.data.window_size
-    fps = config.data.fps
-
-    video_len = video.shape[0]
-    video_pad = n_frames
-
-    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
-
-    if len(fake_segments) == 0:
-        start = random.randint(video_pad, video_len - n_frames - video_pad)
-        video = video[start : start + n_frames, :, :, :]
-
-        return video, [0.0, 1.0]
-    else:
-        transition = random.choice(random.choice(fake_segments)) * fps + video_pad
-
-        if config.data.center_transition:
-            start = floor(transition - n_frames // 2)
-        else:
-            start = random.randint(transition - n_frames + 1, transition - 1)
-
-        video = video[start : start + n_frames, :, :, :]
-
-        return video, [1.0, 0.0]
-
-
-def cut_video_test(video, fake_segments, config):
-    n_frames = config.data.window_size
-    fps = config.data.fps
-    video_len = video.shape[0]
-    video_pad = n_frames
-
-    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
-
-    if len(fake_segments) == 0:
-        start1 = video_pad
-        start2 = video_len
-        video1 = video[start1 : start1 + n_frames, :, :, :]
-        video2 = video[start2 : start2 + n_frames, :, :, :]
-
-        video = torch.stack([video1, video2])
-        label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
-    else:
-        cut_video = []
-        label = []
-        for transition in fake_segments:
-            for t in transition:
-                t = t * fps + video_pad
-                start = floor(t - n_frames // 2)
-                video1 = video[start : start + n_frames, :, :, :]
-                cut_video.append(video1)
-                label.append([1.0, 0.0])
-
-        video = torch.stack(cut_video)
-        label = torch.tensor(label)
-
-    return video, label
-
-
-def cut_sliding_window_video(video, fake_segments, config, step_size=4):
-    window_size = config.data.window_size
-    fps = config.data.fps
-
-    video_len = video.shape[0]
-    video = pad(video, (0, 0, 0, 0, 0, 0, window_size, window_size), "constant", 0)
-
-    sliced_video = []
-
-    for i in range(0, video_len + window_size, step_size):
-        video_slice = video[i : i + window_size, :, :, :]
-        sliced_video.append(video_slice)
-
-    video = torch.stack(sliced_video)
-
-    label = torch.zeros(video.shape[0], 2)
-    label[:, 1] = 1.0
-    fake_segments = [i for ii in fake_segments for i in ii]
-
-    for t in fake_segments:
-        index = floor(t * fps) // step_size + ((window_size // 2) // step_size)
-        label[index] = torch.tensor([1.0, 0.0])
-
-    return video, label
-
-
-def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
+def audio_collate_fn(audio, label, config, sliding_window=False):
     if not sliding_window:
-        if not test:
-            audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
-            audio = torch.stack(audio).squeeze()
-            label = torch.tensor(label)
-        else:
-            audio, label = zip(
-                *[cut_audio_test(a, l, config) for a, l in zip(audio, label)]
-            )
-            audio = torch.cat(audio)
-            label = torch.cat(label)
+        audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
     else:
         audio, label = zip(
             *[cut_sliding_window_audio(a, l, config) for a, l in zip(audio, label)]
         )
-        audio = torch.cat(audio).squeeze()
-        label = torch.cat(label)
-
+    audio = torch.stack(audio).squeeze()
+    label = torch.tensor(label)
     return audio, label
 
 
-def video_collate_fn(video, label, config, sliding_window=False, test=False):
-    if not sliding_window:
-        if not test:
-            video, label = zip(*[cut_video(v, l, config) for v, l in zip(video, label)])
-            video = torch.stack(video).squeeze()
-            label = torch.tensor(label)
-        else:
-            video, label = zip(
-                *[cut_video_test(v, l, config) for v, l in zip(video, label)]
-            )
-            video = torch.cat(video)
-            label = torch.cat(label)
-    else:
-        video, label = zip(
-            *[cut_sliding_window_video(v, l, config) for v, l in zip(video, label)]
-        )
-        video = torch.cat(video).squeeze()
-        label = torch.cat(label)
-    return video, label
-
-
-def av1m_collate_fn(batch, config, sliding_window=False, test=False):
-    x, av_info = batch
-    video, audio, _ = zip(*x)
+def partialspoof_collate_fn(batch, config, sliding_window=False, test=False):
+    audio, a_info = batch
+    audio, _ = zip(*audio)
 
     if config.model.task == "audio":
         return audio_collate_fn(
-            audio,
-            [i["audio_fake_segments"] for i in av_info],
-            config,
-            sliding_window,
-            test=test,
+            audio, [i["audio_fake_segments"] for i in a_info], config
         )
     elif config.model.task == "video":
-        return video_collate_fn(
-            video,
-            [i["video_fake_segments"] for i in av_info],
-            config,
-            sliding_window,
-            test=test,
-        )
-
-
-def npz_decoder(data):
-    data = np.load(BytesIO(data))
-    video = torch.from_numpy(data["video"])
-    audio = torch.from_numpy(data["audio"])
-    label = torch.from_numpy(data["label"])
-    return video, audio, label
+        raise NotImplementedError("PartialSpoof is audio only")
 
 
 def json_decoder(data):
@@ -289,23 +153,17 @@ def get_data(tar_paths, config, train=True):
     #     WebDataset object
 
     if not config.model.online_encoding:
-        dataset = (
-            wds.WebDataset(tar_paths)
-            .decode(
-                wds.handle_extension("npz", npz_decoder),
-                wds.handle_extension("json", json_decoder),
-            )
-            .to_tuple("npz", "json")
-            .batched(config.train.batch_size)
+        raise NotImplementedError(
+            "Pre-encoded data is not yet supported for PartialSpoof dataset"
         )
     else:
         dataset = (
             wds.WebDataset(tar_paths)
             .decode(
-                wds.torch_video,
+                wds.torch_audio,
                 wds.handle_extension("json", json_decoder),
             )
-            .to_tuple("mp4", "json")
+            .to_tuple("wav", "json")
             .batched(config.train.batch_size)
         )
 
@@ -315,7 +173,7 @@ def get_data(tar_paths, config, train=True):
     return dataset
 
 
-def av1m_get_splits(
+def partialspoof_get_splits(
     root: str,
     config,
     train_parts="all",
@@ -360,22 +218,22 @@ def av1m_get_splits(
 
     if val_parts == "all":
         val_parts = [
-            os.path.join(root, "val", i) for i in os.listdir(os.path.join(root, "val"))
+            os.path.join(root, "dev", i) for i in os.listdir(os.path.join(root, "dev"))
         ]
     else:
         val_parts = [
-            os.path.join(root, "val", f"val_{str(p).zfill(3)}.tar.gz")
+            os.path.join(root, "dev", f"dev_{str(p).zfill(3)}.tar.gz")
             for p in val_parts
         ]
 
     if test_parts == "all":
         test_parts = [
-            os.path.join(root, "test", i)
-            for i in os.listdir(os.path.join(root, "test"))
+            os.path.join(root, "eval", i)
+            for i in os.listdir(os.path.join(root, "eval"))
         ]
     else:
         test_parts = [
-            os.path.join(root, "test", f"test_{str(p).zfill(3)}.tar.gz")
+            os.path.join(root, "eval", f"eval_{str(p).zfill(3)}.tar.gz")
             for p in test_parts
         ]
 

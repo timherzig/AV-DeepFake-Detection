@@ -8,7 +8,7 @@ def parse_args():
         "--task",
         type=str,
         default="train",
-        help="train, evaluate, prepare",
+        help="train, evaluate, create_webdataset",
         required=True,
     )
 
@@ -24,6 +24,10 @@ def parse_args():
 
     parser.add_argument(
         "--resume", action="store_true", help="Resume training from checkpoint"
+    )
+
+    parser.add_argument(
+        "--eval_ds", type=str, default="av1m", help="Dataset to evaluate on"
     )
 
     return parser.parse_args()
