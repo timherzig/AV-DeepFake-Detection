@@ -253,6 +253,7 @@ class VisionMamba(nn.Module):
         self.fused_add_norm = fused_add_norm
         self.use_checkpoint = use_checkpoint
         self.checkpoint_num = checkpoint_num
+        self.num_frames = num_frames
         print(f"Use checkpoint: {use_checkpoint}")
         print(f"Checkpoint number: {checkpoint_num}")
 
@@ -408,16 +409,21 @@ class VisionMamba(nn.Module):
 
         # return only cls token
         # return hidden_states
-        return hidden_states[:, 0, :]
+        return hidden_states[:, 0 : self.num_frames, :]
 
     def forward(self, x, inference_params=None):
-        # x = x.permute(0, 4, 1, 2, 3)
         x = self.forward_features(x, inference_params)
-        x = self.head(self.head_drop(x))
         return x
+        # print(f"x after forward features: {x.shape}")
+        # x = self.head(self.head_drop(x))
+        # print(f"x after videomamaba: {x.shape}")
+        # return x
 
     def get_encoding_dim(self):
-        return [1, self.embed_dim]
+        return self.embed_dim
+
+    def get_temporal_dim(self, window_size):
+        return self.num_frames
 
 
 def inflate_weight(weight_2d, time_dim, center=True):

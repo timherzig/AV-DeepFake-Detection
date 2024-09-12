@@ -235,6 +235,9 @@ def video_collate_fn(video, label, config, sliding_window=False, test=False):
         )
         video = torch.cat(video).squeeze()
         label = torch.cat(label)
+
+    video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
+
     return video, label
 
 
@@ -247,7 +250,7 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
             audio,
             [i["audio_fake_segments"] for i in av_info],
             config,
-            sliding_window,
+            sliding_window=sliding_window,
             test=test,
         )
     elif config.model.task == "video":
@@ -255,7 +258,7 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
             video,
             [i["video_fake_segments"] for i in av_info],
             config,
-            sliding_window,
+            sliding_window=sliding_window,
             test=test,
         )
 

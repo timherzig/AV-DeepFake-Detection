@@ -173,7 +173,7 @@ def save_checkpoint(model, model_dir, epoch, val_loss, f1):
     )
 
     print(
-        f"Saved model: {epoch}_{val_loss}_{f1} to {os.path.join(model_dir, f'model_epoch_{epoch}__vloss_{val_loss:.3f}_vf1_{f1:.3f}.pt')}"
+        f"Saved model: {epoch}_{val_loss}_{f1} to {os.path.join(model_dir, f'model_epoch_{epoch}_vloss_{val_loss:.3f}_vf1_{f1:.3f}.pt')}"
     )
 
 

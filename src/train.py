@@ -33,7 +33,7 @@ def train(config, args):
     writer = SummaryWriter(log_dir=log_dir)
 
     (train_dl, train_len), (val_dl, val_len), _ = get_dataloaders(
-        ["train", "val"], args.data_root, config
+        ["train", "val"], args.data_root, config, test=False
     )
 
     model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)

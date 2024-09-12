@@ -17,5 +17,6 @@ class Model(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
+        print(f"Encoded shape: {x.shape}")
         x = self.decoder(x)
         return x

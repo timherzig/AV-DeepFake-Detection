@@ -55,6 +55,8 @@ def get_dataloaders(splits, root, config, test=False):
     # test_len : int
     #     Length of the test set
 
+    t = test
+
     train_parts = config.data.train_parts
     val_parts = config.data.val_parts
     test_parts = config.data.test_parts
@@ -70,7 +72,7 @@ def get_dataloaders(splits, root, config, test=False):
 
     train_dl, val_dl, test_dl = None, None, None
 
-    c_fn = partial(collate_fn, config=config, test=test)
+    c_fn = partial(collate_fn, config=config, test=t)
 
     if "train" in splits:
         train_dl = torch.utils.data.DataLoader(

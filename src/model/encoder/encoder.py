@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from collections import OrderedDict
+
 
 class Encoder(nn.Module):
     def __init__(self, config):
@@ -19,7 +21,7 @@ class Encoder(nn.Module):
 
         # VIDEO
         elif self.config.model.encoder.name.lower() == "videomamba":
-            from src.model.encoders.videomamba.videomamba import (
+            from src.model.encoder.videomamba.videomamba import (
                 videomamba_middle,
                 videomamba_small,
                 videomamba_tiny,
@@ -34,10 +36,38 @@ class Encoder(nn.Module):
             else:
                 raise ValueError("Invalid version for the videomamba encoder")
 
+        elif self.config.model.encoder.name.lower() == "videoswin":
+            from src.model.encoder.videoswin.video_swin_transformer import (
+                SwinTransformer3D,
+            )
+
+            self.encoder = SwinTransformer3D(
+                embed_dim=128,
+                depths=[2, 2, 18, 2],
+                num_heads=[4, 8, 16, 32],
+                patch_size=(2, 4, 4),
+                window_size=(16, 7, 7),
+                drop_path_rate=0.4,
+                patch_norm=True,
+            )
+
+            # Currently only works with: "encoder_checkpoints/videoswin/swin_base_patch244_window1677_sthv2.pth"
+            checkpoint = torch.load(self.config.model.encoder.pretrained_path)
+
+            new_state_dict = OrderedDict()
+            for k, v in checkpoint["state_dict"].items():
+                if "backbone" in k:
+                    name = k[9:]
+                    new_state_dict[name] = v
+
+            self.encoder.load_state_dict(new_state_dict)
+
     def forward(self, x):
         if self.config.model.encoder.name.lower() == "wavlm":
             return self.encoder(x, output_layer=self.config.model.encoder.output_layer)
         elif self.config.model.encoder.name.lower() == "videomamba":
+            return self.encoder(x)
+        elif self.config.model.encoder.name.lower() == "videoswin":
             return self.encoder(x)
 
         return self.encoder(x)
