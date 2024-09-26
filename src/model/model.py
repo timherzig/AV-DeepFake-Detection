@@ -16,7 +16,8 @@ class Model(nn.Module):
         self.decoder = Decoder(self.config)
 
     def forward(self, x):
+        # print(f"Input shape: {x.shape}")
         x = self.encoder(x)
-        print(f"Encoded shape: {x.shape}")
+        # print(f"Encoded shape: {x.shape}")
         x = self.decoder(x)
         return x

@@ -13,7 +13,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--config", type=str, default="config/default.yaml", help="Path to config file"
+        "--config",
+        type=str,
+        default="config/default_audio.yaml",
+        help="Path to config file",
     )
 
     parser.add_argument(
@@ -28,6 +31,10 @@ def parse_args():
 
     parser.add_argument(
         "--eval_ds", type=str, default="av1m", help="Dataset to evaluate on"
+    )
+
+    parser.add_argument(
+        "--step_size", type=int, default=1, help="Step size for sliding window"
     )
 
     return parser.parse_args()

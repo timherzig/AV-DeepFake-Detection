@@ -10,16 +10,18 @@ def main(args):
     config = get_config(args.config)
     config.debug = args.debug
 
-    if args.eval_ds != "av1m":
-        config.data.name = args.eval_ds
+    if args.debug:
+        config.train.batch_size = 4
 
     if args.task == "train":
         print(f"Training model")
         train(config, args)
     elif args.task == "evaluate":
-        print(f"Evaluating model")
+        print(f"Evaluating model separate centered windows")
         transition_eval(config, args)
-        # sliding_window_eval(config, args, config.train.batch_size)
+    elif args.task == "evaluate_sw":
+        print(f"Evaluating model sliding window")
+        sliding_window_eval(config, args, config.train.batch_size)
     elif args.task == "create_webdataset":
         print(f"Preparing webdataset")
         create_webdataset(args)

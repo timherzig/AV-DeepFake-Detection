@@ -60,6 +60,8 @@ def get_paths(config, create_folders=True, evaluate=False):
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(model_dir, exist_ok=True)
         OmegaConf.save(config, os.path.join(root, "config.yaml"))
+        with open(os.path.join(root, "notes.txt"), "w") as f:
+            f.write("Notes")
 
     return root, log_dir, model_dir
 

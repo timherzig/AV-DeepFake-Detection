@@ -55,5 +55,10 @@ def iterate_dataset(args):
     if os.path.exists(os.path.join(root, "dev")):
         iterate_split(os.path.join(root, "dev"), args)
 
+    # AV1M case
     if os.path.exists(os.path.join(root, "test")):
         iterate_split(os.path.join(root, "test"), args)
+
+    # PartialSpoof case
+    if os.path.exists(os.path.join(root, "eval")):
+        iterate_split(os.path.join(root, "eval"), args)
