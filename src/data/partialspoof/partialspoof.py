@@ -7,10 +7,8 @@ import random
 import numpy as np
 import webdataset as wds
 
-from io import BytesIO
 from math import floor
-from scipy.io import wavfile
-from torch.nn.functional import pad
+from torch.nn.functional import pad, normalize
 
 
 def cut_audio(audio, fake_segments, config):
@@ -27,7 +25,7 @@ def cut_audio(audio, fake_segments, config):
         start = random.randint(audio_frames, audio_len + audio_frames)
         audio = audio[:, start : start + audio_frames]
 
-        return audio, [0.0, 1.0]
+        label = [0.0, 1.0]
     else:
         transition = (
             random.choice(random.choice(fake_segments)) * sr + audio_frames
@@ -39,8 +37,12 @@ def cut_audio(audio, fake_segments, config):
             start = random.randint(transition - audio_frames + 1, transition - 1)
 
         audio = audio[:, start : start + audio_frames]
+        label = [1.0, 0.0]
 
-        return audio, [1.0, 0.0]
+    if audio.shape[1] != audio_frames:
+        audio = pad(audio, (0, audio_frames - audio.shape[1]), "constant", 0)
+
+    return audio, label
 
 
 def cut_audio_test(audio, fake_segments, config):
@@ -52,12 +54,21 @@ def cut_audio_test(audio, fake_segments, config):
     audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
 
     if len(fake_segments) == 0:
-        start1 = audio_frames
+        start1 = audio_frames  # In the test case always take the first and last audio segment for consistency
         start2 = audio_len
+        start3 = floor(audio_len / 2)  # take the middle segment as well
         audio1 = audio[:, start1 : start1 + audio_frames]
         audio2 = audio[:, start2 : start2 + audio_frames]
+        audio3 = audio[:, start3 : start3 + audio_frames]
 
-        audio = torch.stack([audio1, audio2])
+        if audio1.shape[1] != audio_frames:
+            audio1 = pad(audio1, (0, audio_frames - audio1.shape[1]), "constant", 0)
+        if audio2.shape[1] != audio_frames:
+            audio2 = pad(audio2, (0, audio_frames - audio2.shape[1]), "constant", 0)
+        if audio3.shape[1] != audio_frames:
+            audio3 = pad(audio3, (0, audio_frames - audio3.shape[1]), "constant", 0)
+
+        audio = torch.stack([audio1, audio2, audio3])
         label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
 
     else:
@@ -69,6 +80,13 @@ def cut_audio_test(audio, fake_segments, config):
                 t = t * sr + audio_frames
                 start = floor(t - audio_frames // 2)
                 audio_slice = audio[:, start : start + audio_frames]
+                if audio_slice.shape[1] != audio_frames:
+                    audio_slice = pad(
+                        audio_slice,
+                        (0, audio_frames - audio_slice.shape[1]),
+                        "constant",
+                        0,
+                    )
                 cut_audio.append(audio_slice)
                 label.append([1.0, 0.0])
 
@@ -94,6 +112,12 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
 
     for i in range(0, audio_len + window_size, step_size):
         audio_slice = audio[:, i : i + window_size]
+
+        if audio_slice.shape[1] != window_size:
+            audio_slice = pad(
+                audio_slice, (0, window_size - audio_slice.shape[1]), "constant", 0
+            )
+
         sliced_audio.append(audio_slice)
 
     audio = torch.stack(sliced_audio)
@@ -108,15 +132,30 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     return audio, label
 
 
-def audio_collate_fn(audio, label, config, sliding_window=False):
+def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
     if not sliding_window:
-        audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
+        if not test:
+            audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
+            # normalize audio
+            audio = [normalize(i, dim=1) for i in audio]
+            audio = torch.stack(audio).squeeze()
+            label = torch.tensor(label)
+        else:
+            audio, label = zip(
+                *[cut_audio_test(a, l, config) for a, l in zip(audio, label)]
+            )
+            audio = [normalize(i, dim=1) for i in audio]
+            audio = torch.cat(audio)
+            label = torch.cat(label)
     else:
         audio, label = zip(
             *[cut_sliding_window_audio(a, l, config) for a, l in zip(audio, label)]
         )
-    audio = torch.stack(audio).squeeze()
-    label = torch.tensor(label)
+        # normalize audio
+        audio = [normalize(i, dim=1) for i in audio]
+        audio = torch.cat(audio).squeeze()
+        label = torch.cat(label)
+
     return audio, label
 
 
@@ -126,7 +165,11 @@ def partialspoof_collate_fn(batch, config, sliding_window=False, test=False):
 
     if config.model.task == "audio":
         return audio_collate_fn(
-            audio, [i["audio_fake_segments"] for i in a_info], config
+            audio,
+            [i["audio_fake_segments"] for i in a_info],
+            config,
+            sliding_window=sliding_window,
+            test=test,
         )
     elif config.model.task == "video":
         raise NotImplementedError("PartialSpoof is audio only")
