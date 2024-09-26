@@ -9,7 +9,7 @@ data:
   train_parts: "all"
   val_parts: "all"
   test_parts: "all"
-  train_size: 20000 # -1 means the complete set 
+  train_size: 50000 # -1 means the complete set 
   val_size: 5000 # -1 means the complete set
   test_size: -1 # -1 means the complete set
   shape: [3, 224, 224]

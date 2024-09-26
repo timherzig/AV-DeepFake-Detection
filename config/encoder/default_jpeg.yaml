@@ -1,0 +1,5 @@
+name: "jpeg"
+version: ""
+pretrained: False
+pretrained_path: ""
+quality: 10

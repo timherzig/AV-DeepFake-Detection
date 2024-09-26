@@ -1,6 +1,6 @@
 model:
-  task: 'audio' # 'audio' or 'video' or 'audio_video'
-  encoder: 'config/encoder/default_wavlm.yaml'
+  task: 'video' # 'audio' or 'video' or 'audio_video'
+  encoder: 'config/encoder/default_dct.yaml'
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
