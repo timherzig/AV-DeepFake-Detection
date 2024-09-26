@@ -6,6 +6,7 @@ from src.data.partialspoof.partialspoof import (
     partialspoof_get_splits,
     partialspoof_collate_fn,
 )
+from src.data.halftruth.halftruth import halftruth_get_splits, halfthruth_collate_fn
 
 
 def collate_fn(batch, config, test=False):
@@ -17,6 +18,10 @@ def collate_fn(batch, config, test=False):
         return partialspoof_collate_fn(
             batch, config, sliding_window=config.data.sliding_window, test=test
         )
+    if config.data.name == "halftruth":
+        return halfthruth_collate_fn(
+            batch, config, sliding_window=config.data.sliding_window, test=test
+        )
 
     return None
 
@@ -26,6 +31,8 @@ def get_splits(root, config, train_parts, val_parts, test_parts):
         return av1m_get_splits(root, config, train_parts, val_parts, test_parts)
     if config.data.name == "partialspoof":
         return partialspoof_get_splits(root, config, train_parts, val_parts, test_parts)
+    if config.data.name == "halftruth":
+        return halftruth_get_splits(root, config, train_parts, val_parts, test_parts)
 
     return None, None, None
 
