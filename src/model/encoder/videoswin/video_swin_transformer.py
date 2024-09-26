@@ -622,6 +622,7 @@ class SwinTransformer3D(nn.Module):
         patch_norm=False,
         frozen_stages=-1,
         use_checkpoint=False,
+        config=None,
     ):
         super().__init__()
 
@@ -633,6 +634,7 @@ class SwinTransformer3D(nn.Module):
         self.frozen_stages = frozen_stages
         self.window_size = window_size
         self.patch_size = patch_size
+        self.config = config
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed3D(
@@ -669,6 +671,10 @@ class SwinTransformer3D(nn.Module):
             )
             self.layers.append(layer)
 
+        self.succeeding_layers = nn.Sequential(
+            torch.nn.MaxPool3d(kernel_size=(1, 7, 7), stride=(1, 2, 2)),
+        )
+
         self.num_features = int(embed_dim * 2 ** (self.num_layers - 1))
 
         # add a norm layer for each output
@@ -692,24 +698,25 @@ class SwinTransformer3D(nn.Module):
 
     def forward(self, x):
         """Forward function."""
-        x = self.patch_embed(x)
-
-        x = self.pos_drop(x)
+        x = self.patch_embed(x)  # Splits image into patches
+        x = self.pos_drop(x)  # Dropout
 
         for layer in self.layers:
             x = layer(x.contiguous())
 
         x = rearrange(x, "n c d h w -> n d h w c")
         x = self.norm(x)
-        x = rearrange(x, "n d h w c -> n c d h w")
+        x = rearrange(x, "n d h w c -> n d c h w")
 
+        x = self.succeeding_layers(x).squeeze()
         return x
 
     def get_encoding_dim(self):
-        return self.num_features
+        return self.embed_dim * 8
 
     def get_temporal_dim(self, window_size):
-        return window_size
+        # T / 2
+        return window_size // 2
 
     def train(self, mode=True):
         """Convert the model into training mode while keep layers freezed."""

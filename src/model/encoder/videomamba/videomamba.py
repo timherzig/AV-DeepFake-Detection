@@ -108,6 +108,8 @@ class Block(nn.Module):
                 self.mixer, hidden_states, inference_params
             )
         else:
+            # print(f"Inference params: {inference_params}")
+            # print(f"Hidden states: {hidden_states.shape}")
             hidden_states = self.mixer(hidden_states, inference_params=inference_params)
         return hidden_states, residual
 
@@ -414,10 +416,6 @@ class VisionMamba(nn.Module):
     def forward(self, x, inference_params=None):
         x = self.forward_features(x, inference_params)
         return x
-        # print(f"x after forward features: {x.shape}")
-        # x = self.head(self.head_drop(x))
-        # print(f"x after videomamaba: {x.shape}")
-        # return x
 
     def get_encoding_dim(self):
         return self.embed_dim
@@ -472,6 +470,7 @@ def videomamba_tiny(config, **kwargs):
     if config.pretrained:
         state_dict = torch.load(config.pretrained_path, map_location="cpu")
         load_state_dict(model, state_dict, center=True)
+        print("Loaded pretrained model")
     return model
 
 
@@ -491,6 +490,7 @@ def videomamba_small(config, **kwargs):
     if config.pretrained:
         state_dict = torch.load(config.pretrained_path, map_location="cpu")
         load_state_dict(model, state_dict, center=True)
+        print("Loaded pretrained model")
     return model
 
 
@@ -510,6 +510,7 @@ def videomamba_middle(config, **kwargs):
     if config.pretrained:
         state_dict = torch.load(config.pretrained_path, map_location="cpu")
         load_state_dict(model, state_dict, center=True)
+        print("Loaded pretrained model")
     return model
 
 

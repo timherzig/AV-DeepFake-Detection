@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from einops import rearrange
 from collections import OrderedDict
 
 
@@ -10,6 +11,7 @@ class Encoder(nn.Module):
         self.config = config
 
         self.encoder = None
+        self.succeeding_layers = None
 
         # AUDIO
         if self.config.model.encoder.name.lower() == "wavlm":
@@ -49,6 +51,7 @@ class Encoder(nn.Module):
                 window_size=(16, 7, 7),
                 drop_path_rate=0.4,
                 patch_norm=True,
+                config=self.config,
             )
 
             # Currently only works with: "encoder_checkpoints/videoswin/swin_base_patch244_window1677_sthv2.pth"
@@ -62,12 +65,26 @@ class Encoder(nn.Module):
 
             self.encoder.load_state_dict(new_state_dict)
 
+        elif self.config.model.encoder.name.lower() == "dct":
+            from src.model.encoder.dct.dct import DCT
+
+            self.encoder = DCT(self.config)
+
+        elif self.config.model.encoder.name.lower() == "jpeg":
+            from src.model.encoder.jpeg.jpeg import JPEG
+
+            self.encoder = JPEG(self.config)
+
     def forward(self, x):
         if self.config.model.encoder.name.lower() == "wavlm":
             return self.encoder(x, output_layer=self.config.model.encoder.output_layer)
         elif self.config.model.encoder.name.lower() == "videomamba":
             return self.encoder(x)
         elif self.config.model.encoder.name.lower() == "videoswin":
+            return self.encoder(x)
+        elif self.config.model.encoder.name.lower() == "dct":
+            return self.encoder(x)
+        elif self.config.model.encoder.name.lower() == "jpeg":
             return self.encoder(x)
 
         return self.encoder(x)
