@@ -44,6 +44,8 @@ def train(config, args):
 
     best_val_loss = float("inf")
 
+    print(f"Starting training on {device}")
+
     for epoch in range(1, config.train.num_epochs + 1):
         train_loss = train_epoch(
             model,
