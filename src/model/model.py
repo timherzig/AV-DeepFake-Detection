@@ -17,7 +17,11 @@ class Model(nn.Module):
 
     def forward(self, x):
         # print(f"Input shape: {x.shape}")
-        x = self.encoder(x)
+        if self.config.model.encoder_freeze:
+            with torch.no_grad():
+                x = self.encoder(x)
+        else:
+            x = self.encoder(x)
         # print(f"Encoded shape: {x.shape}")
         x = self.decoder(x)
         return x

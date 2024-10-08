@@ -108,8 +108,6 @@ class Block(nn.Module):
                 self.mixer, hidden_states, inference_params
             )
         else:
-            # print(f"Inference params: {inference_params}")
-            # print(f"Hidden states: {hidden_states.shape}")
             hidden_states = self.mixer(hidden_states, inference_params=inference_params)
         return hidden_states, residual
 
@@ -256,8 +254,6 @@ class VisionMamba(nn.Module):
         self.use_checkpoint = use_checkpoint
         self.checkpoint_num = checkpoint_num
         self.num_frames = num_frames
-        print(f"Use checkpoint: {use_checkpoint}")
-        print(f"Checkpoint number: {checkpoint_num}")
 
         # pretrain parameters
         self.num_classes = num_classes
@@ -464,6 +460,8 @@ def videomamba_tiny(config, **kwargs):
         residual_in_fp32=True,
         fused_add_norm=True,
         num_frames=config.num_frames,
+        use_checkpoint=config.pretrained,
+        checkpoint_num=24,
         **kwargs,
     )
     model.default_cfg = _cfg()
@@ -484,6 +482,8 @@ def videomamba_small(config, **kwargs):
         residual_in_fp32=True,
         fused_add_norm=True,
         num_frames=config.num_frames,
+        use_checkpoint=config.pretrained,
+        checkpoint_num=24,
         **kwargs,
     )
     model.default_cfg = _cfg()
@@ -504,6 +504,8 @@ def videomamba_middle(config, **kwargs):
         residual_in_fp32=True,
         fused_add_norm=True,
         num_frames=config.num_frames,
+        use_checkpoint=config.pretrained,
+        checkpoint_num=32,
         **kwargs,
     )
     model.default_cfg = _cfg()

@@ -20,10 +20,9 @@ class DCT(nn.Module):
         x = Grayscale()(x).squeeze()
         # convert to 8x8 blocks
         x = x.unfold(2, 8, 8).unfold(3, 8, 8)  # (B, T, C, 28, 28, 8, 8)
-        print(f"unfolded shape: {x.shape}")
         x = x.contiguous().view(x.size(0), x.size(1), x.size(2) * x.size(3), 8, 8)
-        print(f"contiguous shape: {x.shape}")
         x = dct.dct_2d(x, norm=None)
+        x = x.reshape(x.size(0), x.size(1), x.size(2) * x.size(3) * x.size(4))
         return x
 
     def get_temporal_dim(self, window_size):
