@@ -125,7 +125,8 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
 
     for t in fake_segments:
         index = floor(t * sr) // step_size + ((window_size // 2) // step_size)
-        label[index] = torch.tensor([1.0, 0.0])
+        if index < len(label):
+            label[index] = torch.tensor([1.0, 0.0])
 
     return audio, label
 
@@ -155,11 +156,21 @@ def cut_video(video, fake_segments, config):
         video = video[start : start + n_frames, :, :, :]
         label = [1.0, 0.0]
 
-    print(f"video shape: {video.shape}, n_frames: {n_frames}")
-
     if video.shape[0] < n_frames:
         video = pad(
-            video, (0, n_frames - video.shape[0], 0, 0, 0, 0, 0, 0), "constant", 0
+            video,
+            (
+                0,
+                config.data.shape[0] - video.shape[3],
+                0,
+                config.data.shape[1] - video.shape[2],
+                0,
+                config.data.shape[2] - video.shape[1],
+                0,
+                n_frames - video.shape[0],
+            ),
+            "constant",
+            0,
         )
 
     return video, label
@@ -181,11 +192,35 @@ def cut_video_test(video, fake_segments, config):
 
         if video1.shape[0] < n_frames:
             video1 = pad(
-                video1, (0, n_frames - video1.shape[0], 0, 0, 0, 0, 0, 0), "constant", 0
+                video1,
+                (
+                    0,
+                    config.data.shape[0] - video1.shape[3],
+                    0,
+                    config.data.shape[1] - video1.shape[2],
+                    0,
+                    config.data.shape[2] - video1.shape[1],
+                    0,
+                    n_frames - video1.shape[0],
+                ),
+                "constant",
+                0,
             )
         if video2.shape[0] < n_frames:
             video2 = pad(
-                video2, (0, n_frames - video2.shape[0], 0, 0, 0, 0, 0, 0), "constant", 0
+                video2,
+                (
+                    0,
+                    config.data.shape[0] - video2.shape[3],
+                    0,
+                    config.data.shape[1] - video2.shape[2],
+                    0,
+                    config.data.shape[2] - video2.shape[1],
+                    0,
+                    n_frames - video2.shape[0],
+                ),
+                "constant",
+                0,
             )
 
         video = torch.stack([video1, video2])
@@ -201,7 +236,16 @@ def cut_video_test(video, fake_segments, config):
                 if video1.shape[0] < n_frames:
                     video1 = pad(
                         video1,
-                        (0, n_frames - video1.shape[0], 0, 0, 0, 0, 0, 0),
+                        (
+                            0,
+                            config.data.shape[0] - video1.shape[3],
+                            0,
+                            config.data.shape[1] - video1.shape[2],
+                            0,
+                            config.data.shape[2] - video1.shape[1],
+                            0,
+                            n_frames - video1.shape[0],
+                        ),
                         "constant",
                         0,
                     )
@@ -228,7 +272,16 @@ def cut_sliding_window_video(video, fake_segments, config, step_size=4):
         if video_slice.shape[0] < window_size:
             video_slice = pad(
                 video_slice,
-                (0, window_size - video_slice.shape[0], 0, 0, 0, 0, 0, 0),
+                (
+                    0,
+                    config.data.shape[0] - video_slice.shape[3],
+                    0,
+                    config.data.shape[1] - video_slice.shape[2],
+                    0,
+                    config.data.shape[2] - video_slice.shape[1],
+                    0,
+                    window_size - video_slice.shape[0],
+                ),
                 "constant",
                 0,
             )

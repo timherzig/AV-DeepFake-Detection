@@ -1,4 +1,5 @@
 import os
+import sys
 import math
 import torch
 import numpy as np
@@ -10,6 +11,8 @@ from src.data.data import get_dataloaders
 from src.util.metrics import calculate_metrics
 from src.util.utils import get_paths, get_model_and_checkpoint
 
+np.set_printoptions(threshold=sys.maxsize)
+
 
 def transition_eval(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,11 +20,12 @@ def transition_eval(config, args):
     if not has_triton():
         raise RuntimeError("Triton is not available")
 
-    _, log_dir, model_dir = get_paths(config, create_folders=False, evaluate=True)
-    model, checkpoint = get_model_and_checkpoint(config, model_dir, True)
+    _, log_dir, model_dir = get_paths(
+        config, create_folders=False, evaluate=True, root=args.eval_root
+    )
+    model, _ = get_model_and_checkpoint(config, model_dir, True)
 
     config.data.name = args.eval_ds
-    root, _, _ = get_paths(config, create_folders=False, evaluate=True)
 
     _, _, (test_dl, test_len) = get_dataloaders(
         ["test"], args.data_root, config, test=True
@@ -46,7 +50,12 @@ def transition_eval(config, args):
 
                 y_pred = softmax(y_pred, dim=1)
                 y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
-                y = torch.argmax(y, dim=1).cpu().detach().numpy()
+                # y = torch.argmax(y, dim=1).cpu().detach().numpy()
+                y = y[:, 0].cpu().detach().numpy().astype(int)
+                y_pred = abs(y_pred - 1)
+
+                # print(f"GT: {y}")
+                # print(f"Pred: {y_pred}")
 
                 running_y_true = np.concatenate([running_y_true, y])
                 running_y_pred = np.concatenate([running_y_pred, y_pred])
@@ -72,16 +81,19 @@ def sliding_window_eval(config, args, bs):
     if not has_triton():
         raise RuntimeError("Triton is not available")
 
-    _, log_dir, model_dir = get_paths(config, create_folders=False, evaluate=True)
-    model, checkpoint = get_model_and_checkpoint(config, model_dir, True)
+    _, log_dir, model_dir = get_paths(
+        config, create_folders=False, evaluate=True, root=args.eval_root
+    )
+    model, _ = get_model_and_checkpoint(config, model_dir, True)
 
     config.data.name = args.eval_ds
-    root, _, _ = get_paths(config, create_folders=False, evaluate=True)
 
     _, _, (test_dl, test_len) = get_dataloaders(["test"], args.data_root, config)
 
     model.to(device)
     model.eval()
+
+    print(f"Evaluating with sliding window of size {args.step_size}, batch size {bs}")
 
     avg_acc = 0
     avg_f1 = 0
@@ -108,32 +120,35 @@ def sliding_window_eval(config, args, bs):
 
                     predictions = np.concatenate([predictions, y_pred.astype(int)])
 
-                y = torch.argmax(y, dim=1).cpu().detach().numpy()
-
-                y = abs(y - 1)
+                y = y[:, 0].cpu().detach().numpy().astype(int)
                 predictions = abs(predictions - 1)
 
-                cleaned_predictions = np.zeros_like(predictions)
+                # tmp fix to avoid all neg predictions
+                y = np.concatenate([y, np.array([1])])
+                predictions = np.concatenate([predictions, np.array([1])])
 
-                # Series of 1s are converted to 1
-                continue_i = 0
-                for i, p in enumerate(predictions):
-                    if i < continue_i:
-                        continue
-                    if p == 1:
-                        start = i
-                        for j, p2 in enumerate(predictions[i:]):
-                            if p2 == 0:
-                                end = max(j - 1, 0)
-                                continue_i = i + j
-                                break
+                # cleaned_predictions = np.zeros_like(predictions)
 
-                        cleaned_predictions[start + end // 2] = 1
+                # # Series of 1s are converted to 1
+                # continue_i = 0
+                # for i, p in enumerate(predictions):
+                #     if i < continue_i:
+                #         continue
+                #     if p == 1:
+                #         start = i
+                #         for j, p2 in enumerate(predictions[i:]):
+                #             if p2 == 0:
+                #                 end = max(j - 1, 0)
+                #                 continue_i = i + j
+                #                 break
+
+                #         cleaned_predictions[start + end // 2] = 1
 
                 # print(f"GT Indicies: {np.where(y == 1)[0]}")
                 # print(f"Pred Indicies: {np.where(cleaned_predictions == 1)[0]}")
 
-                acc, f1, eer = calculate_metrics(y, cleaned_predictions)
+                # acc, f1, eer = calculate_metrics(y, cleaned_predictions)
+                acc, f1, eer = calculate_metrics(y, predictions)
 
                 avg_acc += acc
                 avg_f1 += f1

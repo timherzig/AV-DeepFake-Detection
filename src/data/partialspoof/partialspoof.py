@@ -39,7 +39,7 @@ def cut_audio(audio, fake_segments, config):
         audio = audio[:, start : start + audio_frames]
         label = [1.0, 0.0]
 
-    if audio.shape[1] != audio_frames:
+    if audio.shape[1] < audio_frames:
         audio = pad(audio, (0, audio_frames - audio.shape[1]), "constant", 0)
 
     return audio, label
@@ -61,15 +61,15 @@ def cut_audio_test(audio, fake_segments, config):
         audio2 = audio[:, start2 : start2 + audio_frames]
         audio3 = audio[:, start3 : start3 + audio_frames]
 
-        if audio1.shape[1] != audio_frames:
+        if audio1.shape[1] < audio_frames:
             audio1 = pad(audio1, (0, audio_frames - audio1.shape[1]), "constant", 0)
-        if audio2.shape[1] != audio_frames:
+        if audio2.shape[1] < audio_frames:
             audio2 = pad(audio2, (0, audio_frames - audio2.shape[1]), "constant", 0)
-        if audio3.shape[1] != audio_frames:
+        if audio3.shape[1] < audio_frames:
             audio3 = pad(audio3, (0, audio_frames - audio3.shape[1]), "constant", 0)
 
         audio = torch.stack([audio1, audio2, audio3])
-        label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
+        label = torch.tensor([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
 
     else:
         cut_audio = []
@@ -80,7 +80,7 @@ def cut_audio_test(audio, fake_segments, config):
                 t = t * sr + audio_frames
                 start = floor(t - audio_frames // 2)
                 audio_slice = audio[:, start : start + audio_frames]
-                if audio_slice.shape[1] != audio_frames:
+                if audio_slice.shape[1] < audio_frames:
                     audio_slice = pad(
                         audio_slice,
                         (0, audio_frames - audio_slice.shape[1]),
@@ -113,7 +113,7 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     for i in range(0, audio_len + window_size, step_size):
         audio_slice = audio[:, i : i + window_size]
 
-        if audio_slice.shape[1] != window_size:
+        if audio_slice.shape[1] < window_size:
             audio_slice = pad(
                 audio_slice, (0, window_size - audio_slice.shape[1]), "constant", 0
             )
