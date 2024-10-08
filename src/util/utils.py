@@ -17,7 +17,7 @@ def get_config(config_path):
     return config
 
 
-def get_paths(config, create_folders=True, evaluate=False):
+def get_paths(config, create_folders=True, evaluate=False, root=None):
     # Creates the necessary directories and saves the configuration object, returns the paths to the root, log and model directories
     # Parameters
     # ----------
@@ -32,21 +32,22 @@ def get_paths(config, create_folders=True, evaluate=False):
     # model_dir : str
     #     Model directory
 
-    root = os.path.join(
-        "checkpoints",
-        config.data.name,
-        config.model.task,
-        "decoder_" + config.model.decoder.name,
-        "encoder_" + config.model.encoder.name,
-    )
+    if root is None:
+        root = os.path.join(
+            "checkpoints",
+            config.data.name,
+            config.model.task,
+            "decoder_" + config.model.decoder.name,
+            "encoder_" + config.model.encoder.name,
+        )
 
-    if not os.path.exists(root):
-        root = os.path.join(root, "0")
-    else:
-        if create_folders:
-            root = os.path.join(root, str(len(os.listdir(root))))
+        if not os.path.exists(root):
+            root = os.path.join(root, "0")
         else:
-            root = os.path.join(root, str(len(os.listdir(root)) - 1))
+            if create_folders:
+                root = os.path.join(root, str(len(os.listdir(root))))
+            else:
+                root = os.path.join(root, str(len(os.listdir(root)) - 1))
 
     if config.debug:
         root = os.path.join("checkpoints", "debug")

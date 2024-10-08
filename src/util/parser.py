@@ -37,4 +37,6 @@ def parse_args():
         "--step_size", type=int, default=1, help="Step size for sliding window"
     )
 
+    parser.add_argument("--eval_root", type=str, default=None, help="Path to eval root")
+
     return parser.parse_args()
