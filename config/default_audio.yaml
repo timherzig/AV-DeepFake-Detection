@@ -1,6 +1,7 @@
 model:
   task: 'audio' # 'audio' or 'video' or 'audio_video'
   encoder: 'config/encoder/default_wavlm.yaml'
+  encoder_freeze: False
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
@@ -9,14 +10,14 @@ data:
   train_parts: "all"
   val_parts: "all"
   test_parts: "all"
-  train_size: 50000 # -1 means the complete set 
-  val_size: 5000 # -1 means the complete set
+  train_size: -1 # -1 means the complete set 
+  val_size: -1 # -1 means the complete set
   test_size: -1 # -1 means the complete set
   shape: [3, 224, 224]
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
-  window_size: 8 # frames
+  window_size: 16 # frames
   sliding_window: False
 
 train:
