@@ -1,4 +1,9 @@
-from src.eval import transition_eval, sliding_window_eval
+from src.eval import (
+    transition_eval,
+    sliding_window_eval,
+    single_sliding_window_eval,
+    single_transition_eval,
+)
 from src.train import train
 from src.util.utils import get_config
 from src.util.parser import parse_args
@@ -22,6 +27,12 @@ def main(args):
     elif args.task == "evaluate_sw":
         print(f"Evaluating model sliding window")
         sliding_window_eval(config, args, config.train.batch_size)
+    elif args.task == "evaluate_sw_single":
+        config.train.batch_size = 4
+        print(f"Evaluating model sliding window")
+        single_sliding_window_eval(config, args, config.train.batch_size)
+        print(f"----------------------------------------------------------------------")
+        # single_transition_eval(config, args)
     elif args.task == "create_webdataset":
         print(f"Preparing webdataset")
         create_webdataset(args)

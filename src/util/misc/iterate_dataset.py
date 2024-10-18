@@ -89,9 +89,9 @@ def iterate_dataset(args):
     root = args.data_root
     media = "mp4" if args.eval_ds == "av1m" else "wav"
 
-    if os.path.exists(os.path.join(root, "train")):
-        print(f"Processing Train - {root}")
-        iterate_split(os.path.join(root, "train"), args, media)
+    # if os.path.exists(os.path.join(root, "train")):
+    #     print(f"Processing Train - {root}")
+    #     iterate_split(os.path.join(root, "train"), args, media)
 
     # AV1M case
     # if os.path.exists(os.path.join(root, "val")):
@@ -99,14 +99,14 @@ def iterate_dataset(args):
     #     iterate_split(os.path.join(root, "val"), args, media)
 
     # PartialSpoof case
-    if os.path.exists(os.path.join(root, "dev")):
-        iterate_split(os.path.join(root, "dev"), args, media)
+    # if os.path.exists(os.path.join(root, "dev")):
+    #     iterate_split(os.path.join(root, "dev"), args, media)
 
     # AV1M case
-    # if os.path.exists(os.path.join(root, "test")):
-    #     print(f"Processing Test - {root}")
-    #     iterate_split(os.path.join(root, "test"), args, media)
+    if os.path.exists(os.path.join(root, "test")):
+        print(f"Processing Test - {root}")
+        iterate_split(os.path.join(root, "test"), args, media)
 
     # PartialSpoof case
-    if os.path.exists(os.path.join(root, "eval")):
-        iterate_split(os.path.join(root, "eval"), args, media)
+    # if os.path.exists(os.path.join(root, "eval")):
+    #     iterate_split(os.path.join(root, "eval"), args, media)
