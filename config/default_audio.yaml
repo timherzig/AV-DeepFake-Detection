@@ -17,7 +17,7 @@ data:
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
-  window_size: 16 # frames
+  window_size: 4 # frames
   sliding_window: False
 
 train:

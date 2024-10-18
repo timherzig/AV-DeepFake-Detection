@@ -2,3 +2,4 @@ name: "dct"
 version: ""
 pretrained: False
 pretrained_path: ""
+remove_last_ac: 43
