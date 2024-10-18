@@ -1,4 +1,5 @@
 import os
+import sys
 import math
 import json
 import torch
@@ -115,6 +116,9 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
                 audio_slice, (0, window_size - audio_slice.shape[1]), "constant", 0
             )
 
+        # normalize slice
+        audio_slice = normalize(audio_slice, dim=1)
+
         sliced_audio.append(audio_slice)
 
     audio = torch.stack(sliced_audio)
@@ -122,9 +126,13 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     label = torch.zeros(audio.shape[0], 2)
     label[:, 1] = 1.0
     fake_segments = [i for ii in fake_segments for i in ii]
+    fake_segments.append(0.0)
 
     for t in fake_segments:
-        index = floor(t * sr) // step_size + ((window_size // 2) // step_size)
+        t = t * sr + window_size
+        start = floor(t - window_size // 2)
+        index = start // step_size
+
         if index < len(label):
             label[index] = torch.tensor([1.0, 0.0])
 
@@ -292,10 +300,15 @@ def cut_sliding_window_video(video, fake_segments, config, step_size=4):
     label = torch.zeros(video.shape[0], 2)
     label[:, 1] = 1.0
     fake_segments = [i for ii in fake_segments for i in ii]
+    fake_segments.append(0.0)
 
     for t in fake_segments:
-        index = floor(t * fps) // step_size + ((window_size // 2) // step_size)
-        label[index] = torch.tensor([1.0, 0.0])
+        t = t * fps + window_size
+        start = floor(t - window_size // 2)
+        index = start // step_size
+
+        if index < len(label):
+            label[index] = torch.tensor([1.0, 0.0])
 
     return video, label
 
@@ -324,7 +337,7 @@ def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
             ]
         )
         # normalize audio
-        audio = [normalize(a, dim=1) for a in audio]
+        # audio = [normalize(a, dim=1) for b in audio for a in b]
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
 

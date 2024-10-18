@@ -69,7 +69,7 @@ def cut_audio_test(audio, fake_segments, config):
             audio3 = pad(audio3, (0, audio_frames - audio3.shape[1]), "constant", 0)
 
         audio = torch.stack([audio1, audio2, audio3])
-        label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
+        label = torch.tensor([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
 
     else:
         cut_audio = []
@@ -77,7 +77,7 @@ def cut_audio_test(audio, fake_segments, config):
 
         for transition in fake_segments:
             for t in transition:
-                t = t * sr + audio_frames
+                t = float(t) * sr + audio_frames
                 start = floor(t - audio_frames // 2)
                 audio_slice = audio[:, start : start + audio_frames]
                 if audio_slice.shape[1] != audio_frames:
@@ -118,14 +118,17 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
                 audio_slice, (0, window_size - audio_slice.shape[1]), "constant", 0
             )
 
+        audio_slice = normalize(audio_slice, dim=1)
         sliced_audio.append(audio_slice)
 
     audio = torch.stack(sliced_audio)
 
     label = torch.zeros(audio.shape[0], 2)
     fake_segments = [i for ii in fake_segments for i in ii]
+    fake_segments.append(0.0)
 
     for t in fake_segments:
+        t = float(t)
         index = floor(t * sr) // step_size + ((window_size // 2) // step_size)
         label[index] = torch.tensor([1.0, 0.0])
 
@@ -152,7 +155,7 @@ def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
             *[cut_sliding_window_audio(a, l, config) for a, l in zip(audio, label)]
         )
         # normalize audio
-        audio = [normalize(i, dim=1) for i in audio]
+        # audio = [normalize(i, dim=1) for i in audio]
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
 
@@ -269,14 +272,25 @@ def halftruth_get_splits(
             for p in val_parts
         ]
 
+    # if test_parts == "all":
+    #     test_parts = [
+    #         os.path.join(root, "test", i)
+    #         for i in os.listdir(os.path.join(root, "test"))
+    #     ]
+    # else:
+    #     test_parts = [
+    #         os.path.join(root, "test", f"test_{str(p).zfill(3)}.tar.gz")
+    #         for p in test_parts
+    #     ]
+
+    # Test set only contains fakes, in this work we use the dev set for testing as Half-Truth is not used for training
     if test_parts == "all":
         test_parts = [
-            os.path.join(root, "test", i)
-            for i in os.listdir(os.path.join(root, "test"))
+            os.path.join(root, "dev", i) for i in os.listdir(os.path.join(root, "dev"))
         ]
     else:
         test_parts = [
-            os.path.join(root, "test", f"test_{str(p).zfill(3)}.tar.gz")
+            os.path.join(root, "dev", f"dev_{str(p).zfill(3)}.tar.gz")
             for p in test_parts
         ]
 

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from sklearn.metrics import roc_curve, f1_score
+from sklearn.metrics import roc_curve, f1_score, precision_score, recall_score
 
 
 def acc_s(y_true, y_pred):
@@ -9,12 +9,14 @@ def acc_s(y_true, y_pred):
     return correct / total
 
 
-def f1_s(y_true, y_pred, average="binary"):
+def f1_s(y_true, y_pred, average="micro"):
+    print("Precision: ", precision_score(y_true, y_pred, average=average))
+    print("Recall: ", recall_score(y_true, y_pred, average=average))
     return f1_score(y_true, y_pred, average=average)
 
 
 def eer_s(y_true, y_pred):
-    fpr, tpr, threshold = roc_curve(y_true, y_pred, pos_label=1)
+    fpr, tpr, threshold = roc_curve(y_true, y_pred, pos_label=1.0)
     fnr = 1 - tpr
     eer_threshold = threshold[np.nanargmin(np.absolute((fnr - fpr)))]
     eer = fpr[np.nanargmin(np.absolute((fnr - fpr)))]
