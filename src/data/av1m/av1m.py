@@ -313,6 +313,98 @@ def cut_sliding_window_video(video, fake_segments, config, step_size=4):
     return video, label
 
 
+def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, config):
+    n_frames = config.data.window_size
+    sr = config.data.sr
+    fps = config.data.fps
+
+    audio_len = audio.shape[1]
+    audio_frames = n_frames * (sr // fps)
+    audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
+
+    video_len = video.shape[0]
+    video_pad = n_frames
+    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
+
+    if len(audio_fake_segments) == 0 and len(video_fake_segments) == 0:
+        start_time = random.randint(video_pad, video_len - n_frames - video_pad)
+        video = video[start_time : start_time + n_frames, :, :, :]
+        start_time = start_time * (sr // fps)
+        audio = audio[:, start_time : start_time + audio_frames]
+        label = [[0.0, 1.0], [0.0, 1.0]]  # [a, v]
+
+    elif len(audio_fake_segments) == 0:
+        start_time = random.choice(random.choice(video_fake_segments)) * fps + video_pad
+        if config.data.center_transition:
+            start_time = floor(start_time - n_frames // 2)
+        else:
+            start_time = random.randint(start_time - n_frames + 1, start_time - 1)
+        video = video[start_time : start_time + n_frames, :, :, :]
+        start_time = start_time * (sr // fps)
+        audio = audio[:, start_time : start_time + audio_frames]
+        label = [[0.0, 1.0], [1.0, 0.0]]
+
+    elif len(video_fake_segments) == 0:
+        transition = (
+            random.choice(random.choice(audio_fake_segments)) * sr + audio_frames
+        )
+        if config.data.center_transition:
+            start_time = floor(transition - n_frames // 2)
+        else:
+            start_time = random.randint(transition - n_frames + 1, transition - 1)
+        audio = audio[:, start_time : start_time + audio_frames]
+        start_time = start_time // (sr // fps)
+        video = video[start_time : start_time + n_frames, :, :, :]
+        label = [[1.0, 0.0], [0.0, 1.0]]
+
+    else:
+        transition = (
+            random.choice(random.choice(audio_fake_segments)) * sr + audio_frames
+        )
+        if config.data.center_transition:
+            start_time = floor(transition - n_frames // 2)
+        else:
+            start_time = random.randint(transition - n_frames + 1, transition - 1)
+        audio = audio[:, start_time : start_time + audio_frames]
+        start_time = start_time // (sr // fps)
+        video = video[start_time : start_time + n_frames, :, :, :]
+        label = [[1.0, 0.0], [1.0, 0.0]]
+
+    if audio.shape[1] < audio_frames:
+        audio = pad(audio, (0, audio_frames - audio.shape[1]), "constant", 0)
+
+    if video.shape[0] < n_frames:
+        video = pad(
+            video,
+            (
+                0,
+                config.data.shape[0] - video.shape[3],
+                0,
+                config.data.shape[1] - video.shape[2],
+                0,
+                config.data.shape[2] - video.shape[1],
+                0,
+                n_frames - video.shape[0],
+            ),
+            "constant",
+            0,
+        )
+
+    return audio, video, label
+
+
+def cut_audio_video_test(
+    audio, video, audio_fake_segments, video_fake_segments, config
+):
+    pass
+
+
+def cut_sliding_window_audio_video(
+    audio, video, audio_fake_segments, video_fake_segments, config
+):
+    pass
+
+
 def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
     if not sliding_window:
         if not test:
@@ -336,12 +428,8 @@ def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
                 for a, l in zip(audio, label)
             ]
         )
-        # normalize audio
-        # audio = [normalize(a, dim=1) for b in audio for a in b]
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
-
-        # config.data.step_size = 1
 
     return audio, label
 
@@ -373,6 +461,66 @@ def video_collate_fn(video, label, config, sliding_window=False, test=False):
     return video, label
 
 
+def audio_video_collate_fn(
+    audio, video, av_info, config, sliding_window=False, test=False
+):
+    audio_fake_segments = [i["audio_fake_segments"] for i in av_info]
+    video_fake_segments = [i["video_fake_segments"] for i in av_info]
+
+    if not sliding_window:
+        if not test:
+            audio, video, label = zip(
+                *[
+                    cut_audio_video(a, v, afs, vfs, config)
+                    for a, v, afs, vfs in zip(
+                        audio,
+                        video,
+                        audio_fake_segments,
+                        video_fake_segments,
+                    )
+                ]
+            )
+            audio = [normalize(a, dim=1) for a in audio]
+            audio = torch.stack(audio).squeeze()
+            video = torch.stack(video).squeeze()
+            label = torch.tensor(label)
+        else:
+            audio, video, label = zip(
+                *[
+                    cut_audio_video_test(a, v, afs, vfs, config)
+                    for a, v, afs, vfs in zip(
+                        audio,
+                        video,
+                        audio_fake_segments,
+                        video_fake_segments,
+                    )
+                ]
+            )
+            audio = [normalize(a, dim=1) for a in audio]
+            audio = torch.cat(audio)
+            video = torch.cat(video)
+            label = torch.cat(label)
+    else:
+        audio, video, label = zip(
+            *[
+                cut_sliding_window_audio_video(a, v, afs, vfs, config)
+                for a, v, afs, vfs in zip(
+                    audio,
+                    video,
+                    audio_fake_segments,
+                    video_fake_segments,
+                )
+            ]
+        )
+        audio = torch.cat(audio).squeeze()
+        video = torch.cat(video).squeeze()
+        label = torch.cat(label)
+
+    video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
+
+    return (audio, video), label
+
+
 def av1m_collate_fn(batch, config, sliding_window=False, test=False):
     x, av_info = batch
     video, audio, _ = zip(*x)
@@ -389,6 +537,15 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
         return video_collate_fn(
             video,
             [i["video_fake_segments"] for i in av_info],
+            config,
+            sliding_window=sliding_window,
+            test=test,
+        )
+    elif config.model.task == "audio-video":
+        return audio_video_collate_fn(
+            audio,
+            video,
+            av_info,
             config,
             sliding_window=sliding_window,
             test=test,

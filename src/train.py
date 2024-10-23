@@ -109,7 +109,10 @@ def train_epoch(
             pbar.set_description(f"Epoch {epoch} - Train")
 
             x, y = batch
-            x = x.to(device)
+            if config.model.task == "audio-video":
+                x = (x[0].to(device), x[1].to(device))
+            else:
+                x = x.to(device)
             y = y.to(device)
 
             optimizer.zero_grad()
@@ -143,8 +146,12 @@ def val_epoch(
     iters = 0
     running_loss = 0.0
 
-    running_y_true = np.array([])
-    running_y_pred = np.array([])
+    if config.model.task == "audio-video":
+        running_y_true = [np.array([]), np.array([])]
+        running_y_pred = [np.array([]), np.array([])]
+    else:
+        running_y_true = np.array([])
+        running_y_pred = np.array([])
 
     with tqdm(
         val_dl, total=math.ceil(val_len / config.train.batch_size), unit="b"
@@ -154,7 +161,10 @@ def val_epoch(
             iters += 1
 
             x, y = batch
-            x = x.to(device)
+            if config.model.task == "audio-video":
+                x = (x[0].to(device), x[1].to(device))
+            else:
+                x = x.to(device)
             y = y.to(device)
 
             with torch.no_grad():
@@ -168,8 +178,14 @@ def val_epoch(
             y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
             y = torch.argmax(y, dim=1).cpu().detach().numpy()
 
-            running_y_true = np.concatenate([running_y_true, y])
-            running_y_pred = np.concatenate([running_y_pred, y_pred])
+            if config.model.task == "audio-video":
+                running_y_true[0] = np.concatenate([running_y_true[0], y[0]])
+                running_y_true[1] = np.concatenate([running_y_true[1], y[1]])
+                running_y_pred[0] = np.concatenate([running_y_pred[0], y_pred[0]])
+                running_y_pred[1] = np.concatenate([running_y_pred[1], y_pred[1]])
+            else:
+                running_y_true = np.concatenate([running_y_true, y])
+                running_y_pred = np.concatenate([running_y_pred, y_pred])
 
             running_loss += loss.item()
             logger(
@@ -181,6 +197,14 @@ def val_epoch(
 
     running_loss /= iters
 
-    acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
+    if config.model.task == "audio-video":
+        a_acc, a_f1, a_eer = calculate_metrics(running_y_true[0], running_y_pred[0])
+        v_acc, v_f1, v_eer = calculate_metrics(running_y_true[1], running_y_pred[1])
+
+        acc = (a_acc + v_acc) / 2
+        f1 = (a_f1 + v_f1) / 2
+        eer = (a_eer + v_eer) / 2
+    else:
+        acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
 
     return running_loss, acc, f1, eer

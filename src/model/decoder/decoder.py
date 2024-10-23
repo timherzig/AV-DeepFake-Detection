@@ -14,7 +14,7 @@ class Decoder(nn.Module):
 
             self.decoder = MLP(config)
         elif config.model.decoder.name.lower() == "gmlp":
-            pass
+            raise NotImplementedError
         elif config.model.decoder.name.lower() == "aasist":
             from src.model.decoder.aasist.aasist import AASIST
 

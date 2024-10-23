@@ -4,6 +4,7 @@ import math
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from tqdm import tqdm
 from torch.nn.functional import softmax
 from torch.utils._triton import has_triton
@@ -124,18 +125,6 @@ def sliding_window_eval(config, args, bs):
                 y = y[:, 0].cpu().detach().numpy().astype(int)
                 predictions = abs(predictions - 1)
 
-                # index of first one in y
-                # first_one = np.argmax(y) + 1
-
-                # y = y[first_one:-first_one]
-                # predictions = predictions[first_one:-first_one]
-
-                # tmp fix to avoid all neg predictions
-                # y = np.concatenate([y, np.array([1]), np.array([0])])
-                # predictions = np.concatenate(
-                #     [predictions, np.array([1]), np.array([0])]
-                # )
-
                 acc, f1, eer = calculate_metrics(y, predictions)
 
                 avg_acc += acc
@@ -193,9 +182,6 @@ def single_sliding_window_eval(config, args, bs):
                 softmax_predictions = np.array([], dtype=float)
                 predictions = np.array([], dtype=int)
 
-                # print(f"X shape: {x.shape}")
-                # print(f"Y shape: {y.shape}")
-
                 for i in range(0, x.shape[0], bs):
                     window = x[i : i + bs, :]
                     y_pred = model(window)
@@ -232,9 +218,7 @@ def single_sliding_window_eval(config, args, bs):
                 )
 
                 os.makedirs(f"{log_dir}/{args.eval_ds}", exist_ok=True)
-                plot_softmax_groundtruth(
-                    f"{log_dir}/{args.eval_ds}", softmax_predictions, y, j
-                )
+                plot_results(f"{log_dir}/{args.eval_ds}", predictions, y, j)
 
                 acc, f1, eer = calculate_metrics(y, predictions)
                 print(f"Accuracy: {acc:.4f}")
@@ -313,9 +297,29 @@ def single_transition_eval(config, args, num_samples=10):
     print(f"Number of false negatives: {np.sum((predictions == 0) & (y == 1))}")
 
 
-def plot_softmax_groundtruth(save_file, softmax_predictions, y, j):
-    plt.plot(softmax_predictions, marker="o", label="Softmax prediction")
-    plt.plot(y, label="Ground truth")
+def plot_results(save_file, predictions, y, j):
+    time = np.arange(len(predictions))
+
+    cmap = mcolors.LinearSegmentedColormap.from_list("", ["green", "red"])
+    plt.figure(figsize=(10, 5))
+
+    plt.bar(
+        time,
+        y,
+        color="blue",
+        # linewidth=1,
+        label="Ground truth",
+    )
+    plt.bar(
+        time,
+        predictions,
+        # linewidth=1,
+        # linestyle="--",
+        color=cmap(predictions),
+        label="Predictions",
+        alpha=0.5,
+    )
+
     plt.legend()
-    plt.savefig(f"{save_file}/softmax_groundtruth{j}.png")
+    plt.savefig(f"{save_file}/predictions{j}.png")
     plt.close()
