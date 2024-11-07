@@ -195,8 +195,10 @@ def cut_video_test(video, fake_segments, config):
     if len(fake_segments) == 0:
         start1 = video_pad
         start2 = video_len
+        start3 = floor(video_len / 2)
         video1 = video[start1 : start1 + n_frames, :, :, :]
         video2 = video[start2 : start2 + n_frames, :, :, :]
+        video3 = video[start3 : start3 + n_frames, :, :, :]
 
         if video1.shape[0] < n_frames:
             video1 = pad(
@@ -230,9 +232,25 @@ def cut_video_test(video, fake_segments, config):
                 "constant",
                 0,
             )
+        if video3.shape[0] < n_frames:
+            video3 = pad(
+                video3,
+                (
+                    0,
+                    config.data.shape[0] - video3.shape[3],
+                    0,
+                    config.data.shape[1] - video3.shape[2],
+                    0,
+                    config.data.shape[2] - video3.shape[1],
+                    0,
+                    n_frames - video3.shape[0],
+                ),
+                "constant",
+                0,
+            )
 
-        video = torch.stack([video1, video2])
-        label = torch.tensor([[0.0, 1.0], [0.0, 1.0]])
+        video = torch.stack([video1, video2, video3])
+        label = torch.tensor([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
     else:
         cut_video = []
         label = []
@@ -396,13 +414,301 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
 def cut_audio_video_test(
     audio, video, audio_fake_segments, video_fake_segments, config
 ):
-    pass
+    n_frames = config.data.window_size
+    sr = config.data.sr
+    fps = config.data.fps
+
+    audio_len = audio.shape[1]
+    audio_frames = n_frames * (sr // fps)
+    audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
+
+    video_len = video.shape[0]
+    video_pad = n_frames
+    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
+
+    if len(audio_fake_segments) == 0 and len(video_fake_segments) == 0:
+        start1 = video_pad
+        start2 = video_len
+        start3 = floor(video_len / 2)
+
+        video1 = video[start1 : start1 + n_frames, :, :, :]
+        video2 = video[start2 : start2 + n_frames, :, :, :]
+        video3 = video[start3 : start3 + n_frames, :, :, :]
+
+        if video1.shape[0] < n_frames:
+            video1 = pad(
+                video1,
+                (
+                    0,
+                    config.data.shape[0] - video1.shape[3],
+                    0,
+                    config.data.shape[1] - video1.shape[2],
+                    0,
+                    config.data.shape[2] - video1.shape[1],
+                    0,
+                    n_frames - video1.shape[0],
+                ),
+                "constant",
+                0,
+            )
+        if video2.shape[0] < n_frames:
+            video2 = pad(
+                video2,
+                (
+                    0,
+                    config.data.shape[0] - video2.shape[3],
+                    0,
+                    config.data.shape[1] - video2.shape[2],
+                    0,
+                    config.data.shape[2] - video2.shape[1],
+                    0,
+                    n_frames - video2.shape[0],
+                ),
+                "constant",
+                0,
+            )
+        if video3.shape[0] < n_frames:
+            video3 = pad(
+                video3,
+                (
+                    0,
+                    config.data.shape[0] - video3.shape[3],
+                    0,
+                    config.data.shape[1] - video3.shape[2],
+                    0,
+                    config.data.shape[2] - video3.shape[1],
+                    0,
+                    n_frames - video3.shape[0],
+                ),
+                "constant",
+                0,
+            )
+
+        video = torch.stack([video1, video2, video3])
+
+        start1 = start1 * (sr // fps)
+        start2 = start2 * (sr // fps)
+        start3 = start3 * (sr // fps)
+
+        audio1 = audio[:, start1 : start1 + audio_frames]
+        audio2 = audio[:, start2 : start2 + audio_frames]
+        audio3 = audio[:, start3 : start3 + audio_frames]
+
+        if audio1.shape[1] < audio_frames:
+            audio1 = pad(audio1, (0, audio_frames - audio1.shape[1]), "constant", 0)
+        if audio2.shape[1] < audio_frames:
+            audio2 = pad(audio2, (0, audio_frames - audio2.shape[1]), "constant", 0)
+        if audio3.shape[1] < audio_frames:
+            audio3 = pad(audio3, (0, audio_frames - audio3.shape[1]), "constant", 0)
+
+        audio = torch.stack([audio1, audio2, audio3])
+        label = torch.tensor(
+            [
+                [[0.0, 1.0], [0.0, 1.0]],
+                [[0.0, 1.0], [0.0, 1.0]],
+                [[0.0, 1.0], [0.0, 1.0]],
+            ]
+        )
+    elif len(audio_fake_segments) == 0:
+        cut_video = []
+        cut_audio = []
+        label = []
+
+        for transition in video_fake_segments:
+            for t in transition:
+                t = t * fps + video_pad
+                start = floor(t - n_frames // 2)
+                video1 = video[start : start + n_frames, :, :, :]
+                if video1.shape[0] < n_frames:
+                    video1 = pad(
+                        video1,
+                        (
+                            0,
+                            config.data.shape[0] - video1.shape[3],
+                            0,
+                            config.data.shape[1] - video1.shape[2],
+                            0,
+                            config.data.shape[2] - video1.shape[1],
+                            0,
+                            n_frames - video1.shape[0],
+                        ),
+                        "constant",
+                        0,
+                    )
+                cut_video.append(video1)
+
+                start = start * (sr // fps)
+                audio1 = audio[:, start : start + audio_frames]
+                if audio1.shape[1] < audio_frames:
+                    audio1 = pad(
+                        audio1, (0, audio_frames - audio1.shape[1]), "constant", 0
+                    )
+                cut_audio.append(audio1)
+
+                label.append([[0.0, 1.0], [1.0, 0.0]])
+
+        video = torch.stack(cut_video)
+        audio = torch.stack(cut_audio)
+        label = torch.tensor(label)
+    elif len(video_fake_segments) == 0:
+        cut_video = []
+        cut_audio = []
+        label = []
+
+        for transition in audio_fake_segments:
+            for t in transition:
+                t = t * fps + video_pad
+                start = floor(t - n_frames // 2)
+
+                video1 = video[start : start + n_frames, :, :, :]
+                if video1.shape[0] < n_frames:
+                    video1 = pad(
+                        video1,
+                        (
+                            0,
+                            config.data.shape[0] - video1.shape[3],
+                            0,
+                            config.data.shape[1] - video1.shape[2],
+                            0,
+                            config.data.shape[2] - video1.shape[1],
+                            0,
+                            n_frames - video1.shape[0],
+                        ),
+                        "constant",
+                        0,
+                    )
+                cut_video.append(video1)
+
+                start = start * (sr // fps)
+                audio1 = audio[:, start : start + audio_frames]
+                if audio1.shape[1] < audio_frames:
+                    audio1 = pad(
+                        audio1, (0, audio_frames - audio1.shape[1]), "constant", 0
+                    )
+                cut_audio.append(audio1)
+
+                label.append([[1.0, 0.0], [0.0, 1.0]])
+
+        video = torch.stack(cut_video)
+        audio = torch.stack(cut_audio)
+        label = torch.tensor(label)
+    else:
+        cut_video = []
+        cut_audio = []
+        label = []
+
+        for transition in audio_fake_segments:
+            for t in transition:
+                t = t * fps + video_pad
+                start = floor(t - n_frames // 2)
+
+                video1 = video[start : start + n_frames, :, :, :]
+                if video1.shape[0] < n_frames:
+                    video1 = pad(
+                        video1,
+                        (
+                            0,
+                            config.data.shape[0] - video1.shape[3],
+                            0,
+                            config.data.shape[1] - video1.shape[2],
+                            0,
+                            config.data.shape[2] - video1.shape[1],
+                            0,
+                            n_frames - video1.shape[0],
+                        ),
+                        "constant",
+                        0,
+                    )
+                cut_video.append(video1)
+
+                audio1 = audio[:, start : start + audio_frames]
+                start = start * (sr // fps)
+                if audio1.shape[1] < audio_frames:
+                    audio1 = pad(
+                        audio1, (0, audio_frames - audio1.shape[1]), "constant", 0
+                    )
+                cut_audio.append(audio1)
+
+                label.append([[1.0, 0.0], [1.0, 0.0]])
+
+        video = torch.stack(cut_video)
+        audio = torch.stack(cut_audio)
+        label = torch.tensor(label)
+
+    return audio, video, label
 
 
 def cut_sliding_window_audio_video(
-    audio, video, audio_fake_segments, video_fake_segments, config
+    audio, video, audio_fake_segments, video_fake_segments, config, step_size=4
 ):
-    pass
+    window_size = config.data.window_size
+    sr = config.data.sr
+    fps = config.data.fps
+
+    audio_len = audio.shape[1]
+    audio_frames = window_size * (sr // fps)
+    audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
+
+    video_len = video.shape[0]
+    video_pad = window_size
+    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
+
+    sliced_video = []
+    sliced_audio = []
+
+    for i in range(0, video_len + window_size, step_size):
+        video_slice = video[i : i + window_size, :, :, :]
+        if video_slice.shape[0] < window_size:
+            video_slice = pad(
+                video_slice,
+                (
+                    0,
+                    config.data.shape[0] - video_slice.shape[3],
+                    0,
+                    config.data.shape[1] - video_slice.shape[2],
+                    0,
+                    config.data.shape[2] - video_slice.shape[1],
+                    0,
+                    window_size - video_slice.shape[0],
+                ),
+                "constant",
+                0,
+            )
+        sliced_video.append(video_slice)
+
+        audio_slice = audio[:, i * (sr // fps) : (i + window_size) * (sr // fps)]
+        if audio_slice.shape[1] < audio_frames:
+            audio_slice = pad(
+                audio_slice, (0, audio_frames - audio_slice.shape[1]), "constant", 0
+            )
+        sliced_audio.append(audio_slice)
+
+    video = torch.stack(sliced_video)
+    audio = torch.stack(sliced_audio)
+
+    label = torch.zeros(video.shape[0], 2, 2)
+    label[:, :, 1] = 1.0
+
+    audio_fake_segments = [i for ii in audio_fake_segments for i in ii]
+    video_fake_segments = [i for ii in video_fake_segments for i in ii]
+
+    for t in audio_fake_segments:
+        t = t * fps + window_size
+        start = floor(t - window_size // 2)
+        index = start // step_size
+
+        if index < len(label):
+            label[index][0] = torch.tensor([1.0, 0.0])
+
+    for t in video_fake_segments:
+        t = t * fps + window_size
+        start = floor(t - window_size // 2)
+        index = start // step_size
+
+        if index < len(label):
+            label[index][1] = torch.tensor([1.0, 0.0])
+
+    return audio, video, label
 
 
 def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
@@ -497,8 +803,8 @@ def audio_video_collate_fn(
                 ]
             )
             audio = [normalize(a, dim=1) for a in audio]
-            audio = torch.cat(audio)
-            video = torch.cat(video)
+            audio = torch.cat(audio).squeeze()
+            video = torch.cat(video).squeeze()
             label = torch.cat(label)
     else:
         audio, video, label = zip(

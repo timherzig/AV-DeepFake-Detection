@@ -10,8 +10,8 @@ def acc_s(y_true, y_pred):
 
 
 def f1_s(y_true, y_pred, average="micro"):
-    print("Precision: ", precision_score(y_true, y_pred, average=average))
-    print("Recall: ", recall_score(y_true, y_pred, average=average))
+    # print("Precision: ", precision_score(y_true, y_pred, average=average))
+    # print("Recall: ", recall_score(y_true, y_pred, average=average))
     return f1_score(y_true, y_pred, average=average)
 
 

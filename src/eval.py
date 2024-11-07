@@ -36,8 +36,12 @@ def transition_eval(config, args):
     model.to(device)
     model.eval()
 
-    running_y_true = np.array([])
-    running_y_pred = np.array([])
+    if config.model.task == "audio-video":
+        running_y_true = [np.array([]), np.array([])]
+        running_y_pred = [np.array([]), np.array([])]
+    else:
+        running_y_true = np.array([])
+        running_y_pred = np.array([])
 
     with torch.no_grad():
         with tqdm(test_dl, total=math.ceil(test_len / config.train.batch_size)) as pbar:
@@ -45,7 +49,10 @@ def transition_eval(config, args):
                 pbar.set_description(f"Evaluating   ")
 
                 x, y = batch
-                x = x.to(device)
+                if config.model.task == "audio-video":
+                    x = (x[0].to(device), x[1].to(device))
+                else:
+                    x = x.to(device)
                 y = y.to(device)
 
                 y_pred = model(x)
@@ -55,23 +62,49 @@ def transition_eval(config, args):
                 y = y[:, 0].cpu().detach().numpy().astype(int)
                 y_pred = abs(y_pred - 1)
 
-                running_y_true = np.concatenate([running_y_true, y])
-                running_y_pred = np.concatenate([running_y_pred, y_pred])
+                if config.model.task == "audio-video":
+                    running_y_true[0] = np.concatenate([running_y_true[0], y[0]])
+                    running_y_true[1] = np.concatenate([running_y_true[1], y[1]])
+                    running_y_pred[0] = np.concatenate([running_y_pred[0], y_pred[0]])
+                    running_y_pred[1] = np.concatenate([running_y_pred[1], y_pred[1]])
+                else:
+                    running_y_true = np.concatenate([running_y_true, y])
+                    running_y_pred = np.concatenate([running_y_pred, y_pred])
 
     # tmp fix to avoid all neg predictions
     # running_y_true = np.concatenate([running_y_true, np.array([1]), np.array([0])])
     # running_y_pred = np.concatenate([running_y_pred, np.array([1]), np.array([0])])
 
-    acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
+    if config.model.task == "audio-video":
+        a_acc, a_f1, a_eer = calculate_metrics(running_y_true[0], running_y_pred[0])
+        v_acc, v_f1, v_eer = calculate_metrics(running_y_true[1], running_y_pred[1])
 
-    print(f"Accuracy: {acc:.4f}")
-    print(f"F1 Score: {f1:.4f}")
-    print(f"EER: {eer:.4f}")
+        print(f"Audio Accuracy: {a_acc:.4f}")
+        print(f"Audio F1 Score: {a_f1:.4f}")
+        print(f"Audio EER: {a_eer:.4f}")
 
-    with open(f"{log_dir}/eval_results_{config.data.name}.txt", "w+") as f:
-        f.write(f"Accuracy: {acc:.4f}\n")
-        f.write(f"F1 Score: {f1:.4f}\n")
-        f.write(f"EER: {eer:.4f}\n")
+        print(f"Video Accuracy: {v_acc:.4f}")
+        print(f"Video F1 Score: {v_f1:.4f}")
+        print(f"Video EER: {v_eer:.4f}")
+
+        with open(f"{log_dir}/eval_results_{config.data.name}.txt", "w+") as f:
+            f.write(f"Audio Accuracy: {a_acc:.4f}\n")
+            f.write(f"Audio F1 Score: {a_f1:.4f}\n")
+            f.write(f"Audio EER: {a_eer:.4f}\n")
+            f.write(f"Video Accuracy: {v_acc:.4f}\n")
+            f.write(f"Video F1 Score: {v_f1:.4f}\n")
+            f.write(f"Video EER: {v_eer:.4f}\n")
+    else:
+        acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
+
+        print(f"Accuracy: {acc:.4f}")
+        print(f"F1 Score: {f1:.4f}")
+        print(f"EER: {eer:.4f}")
+
+        with open(f"{log_dir}/eval_results_{config.data.name}.txt", "w+") as f:
+            f.write(f"Accuracy: {acc:.4f}\n")
+            f.write(f"F1 Score: {f1:.4f}\n")
+            f.write(f"EER: {eer:.4f}\n")
 
 
 def sliding_window_eval(config, args, bs):
@@ -105,31 +138,65 @@ def sliding_window_eval(config, args, bs):
         with tqdm(test_dl, total=math.ceil(test_len / config.train.batch_size)) as pbar:
             for j, batch in enumerate(pbar):
                 pbar.set_description(f"Evaluating   ")
-
+                n_iter = 0
                 x, y = batch
-                x = x.to(device)
+                if config.model.task == "audio-video":
+                    x = (x[0].to(device), x[1].to(device))
+                    n_iter = x[0].shape[0]
+                    predictions = [np.array([], dtype=int), np.array([], dtype=int)]
+                else:
+                    x = x.to(device)
+                    n_iter = x.shape[0]
+                    predictions = np.array([], dtype=int)
                 y = y.to(device)
 
-                predictions = np.array([], dtype=int)
-
-                for i in range(0, x.shape[0], bs):
-                    window = x[i : i + bs, :]
+                for i in range(0, n_iter, bs):
+                    if config.model.task == "audio-video":
+                        window = (x[0][i : i + bs, :], x[1][i : i + bs, :])
+                    else:
+                        window = x[i : i + bs, :]
                     y_pred = model(window)
 
-                    y_pred = softmax(y_pred, dim=1)
+                    if config.model.task == "audio-video":
+                        a_pred = softmax(y_pred[:, 0], dim=1)
+                        a_pred = torch.argmax(a_pred, dim=1).cpu().detach().numpy()
+                        v_pred = softmax(y_pred[:, 1], dim=1)
+                        v_pred = torch.argmax(v_pred, dim=1).cpu().detach().numpy()
 
-                    y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
+                        predictions[0] = np.concatenate(
+                            [predictions[0], a_pred.astype(int)]
+                        )
+                        predictions[1] = np.concatenate(
+                            [predictions[1], v_pred.astype(int)]
+                        )
+                    else:
+                        y_pred = softmax(y_pred, dim=1)
+                        y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
+                        predictions = np.concatenate([predictions, y_pred.astype(int)])
 
-                    predictions = np.concatenate([predictions, y_pred.astype(int)])
+                if config.model.task == "audio-video":
+                    a_y = y[:, 0, 0].cpu().detach().numpy().astype(int)
+                    v_y = y[:, 1, 0].cpu().detach().numpy().astype(int)
+                    predictions[0] = abs(predictions[0] - 1)
+                    predictions[1] = abs(predictions[1] - 1)
 
-                y = y[:, 0].cpu().detach().numpy().astype(int)
-                predictions = abs(predictions - 1)
+                    print(f"a_y: {a_y}")
+                    print(f"v_y: {v_y}")
+                    print(f"predictions[0]: {predictions[0]}")
+                    print(f"predictions[1]: {predictions[1]}")
 
-                acc, f1, eer = calculate_metrics(y, predictions)
-
-                avg_acc += acc
-                avg_f1 += f1
-                avg_eer += eer
+                    a_acc, a_f1, a_eer = calculate_metrics(a_y, predictions[0])
+                    v_acc, v_f1, v_eer = calculate_metrics(v_y, predictions[1])
+                    acc = (a_acc + v_acc) / 2
+                    f1 = (a_f1 + v_f1) / 2
+                    eer = (a_eer + v_eer) / 2
+                else:
+                    y = y[:, 0].cpu().detach().numpy().astype(int)
+                    predictions = abs(predictions - 1)
+                    acc, f1, eer = calculate_metrics(y, predictions)
+                    avg_acc += acc
+                    avg_f1 += f1
+                    avg_eer += eer
 
     avg_acc /= test_len
     avg_f1 /= test_len
