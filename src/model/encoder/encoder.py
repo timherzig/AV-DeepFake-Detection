@@ -14,7 +14,10 @@ class Encoder(nn.Module):
         self.succeeding_layers = None
 
         # AUDIO
-        if self.config.model.task == "audio":
+        if (
+            self.config.model.task == "audio"
+            or self.config.model.task == "audio-transition"
+        ):
             if self.config.model.encoder.name.lower() == "wavlm":
                 from src.model.encoder.wavlm.WavLM import WavLM, WavLMConfig
 

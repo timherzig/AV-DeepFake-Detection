@@ -39,9 +39,11 @@ def transition_eval(config, args):
     if config.model.task == "audio-video":
         running_y_true = [np.array([]), np.array([])]
         running_y_pred = [np.array([]), np.array([])]
+        running_y_pred_softmax = [np.array([]), np.array([])]
     else:
         running_y_true = np.array([])
         running_y_pred = np.array([])
+        running_y_pred_softmax = np.array([])
 
     with torch.no_grad():
         with tqdm(test_dl, total=math.ceil(test_len / config.train.batch_size)) as pbar:
@@ -58,6 +60,7 @@ def transition_eval(config, args):
                 y_pred = model(x)
 
                 y_pred = softmax(y_pred, dim=1)
+                softmax_predictions = y_pred[:, 0].cpu().detach().numpy()
                 y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
                 y = y[:, 0].cpu().detach().numpy().astype(int)
                 y_pred = abs(y_pred - 1)
@@ -67,17 +70,30 @@ def transition_eval(config, args):
                     running_y_true[1] = np.concatenate([running_y_true[1], y[1]])
                     running_y_pred[0] = np.concatenate([running_y_pred[0], y_pred[0]])
                     running_y_pred[1] = np.concatenate([running_y_pred[1], y_pred[1]])
+                    running_y_pred_softmax[0] = np.concatenate(
+                        [running_y_pred_softmax[0], softmax_predictions[0]]
+                    )
+                    running_y_pred_softmax[1] = np.concatenate(
+                        [running_y_pred_softmax[1], softmax_predictions[1]]
+                    )
                 else:
                     running_y_true = np.concatenate([running_y_true, y])
                     running_y_pred = np.concatenate([running_y_pred, y_pred])
+                    running_y_pred_softmax = np.concatenate(
+                        [running_y_pred_softmax, softmax_predictions]
+                    )
 
     # tmp fix to avoid all neg predictions
     # running_y_true = np.concatenate([running_y_true, np.array([1]), np.array([0])])
     # running_y_pred = np.concatenate([running_y_pred, np.array([1]), np.array([0])])
 
     if config.model.task == "audio-video":
-        a_acc, a_f1, a_eer = calculate_metrics(running_y_true[0], running_y_pred[0])
-        v_acc, v_f1, v_eer = calculate_metrics(running_y_true[1], running_y_pred[1])
+        a_acc, a_f1, a_eer = calculate_metrics(
+            running_y_true[0], running_y_pred[0], running_y_pred_softmax[0]
+        )
+        v_acc, v_f1, v_eer = calculate_metrics(
+            running_y_true[1], running_y_pred[1], running_y_pred_softmax[1]
+        )
 
         print(f"Audio Accuracy: {a_acc:.4f}")
         print(f"Audio F1 Score: {a_f1:.4f}")
@@ -95,7 +111,9 @@ def transition_eval(config, args):
             f.write(f"Video F1 Score: {v_f1:.4f}\n")
             f.write(f"Video EER: {v_eer:.4f}\n")
     else:
-        acc, f1, eer = calculate_metrics(running_y_true, running_y_pred)
+        acc, f1, eer = calculate_metrics(
+            running_y_true, running_y_pred, running_y_pred_softmax
+        )
 
         print(f"Accuracy: {acc:.4f}")
         print(f"F1 Score: {f1:.4f}")
@@ -144,10 +162,12 @@ def sliding_window_eval(config, args, bs):
                     x = (x[0].to(device), x[1].to(device))
                     n_iter = x[0].shape[0]
                     predictions = [np.array([], dtype=int), np.array([], dtype=int)]
+                    softmaxes = [np.array([], dtype=float), np.array([], dtype=float)]
                 else:
                     x = x.to(device)
                     n_iter = x.shape[0]
                     predictions = np.array([], dtype=int)
+                    softmaxes = np.array([], dtype=float)
                 y = y.to(device)
 
                 for i in range(0, n_iter, bs):
@@ -159,6 +179,9 @@ def sliding_window_eval(config, args, bs):
 
                     if config.model.task == "audio-video":
                         a_pred = softmax(y_pred[:, 0], dim=1)
+                        softmaxes[0] = np.concatenate(
+                            [softmaxes[0], a_pred[:, 0].cpu().detach().numpy()]
+                        )
                         a_pred = torch.argmax(a_pred, dim=1).cpu().detach().numpy()
                         v_pred = softmax(y_pred[:, 1], dim=1)
                         v_pred = torch.argmax(v_pred, dim=1).cpu().detach().numpy()
@@ -171,6 +194,9 @@ def sliding_window_eval(config, args, bs):
                         )
                     else:
                         y_pred = softmax(y_pred, dim=1)
+                        softmaxes = np.concatenate(
+                            [softmaxes, y_pred[:, 0].cpu().detach().numpy()]
+                        )
                         y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
                         predictions = np.concatenate([predictions, y_pred.astype(int)])
 
@@ -180,20 +206,19 @@ def sliding_window_eval(config, args, bs):
                     predictions[0] = abs(predictions[0] - 1)
                     predictions[1] = abs(predictions[1] - 1)
 
-                    print(f"a_y: {a_y}")
-                    print(f"v_y: {v_y}")
-                    print(f"predictions[0]: {predictions[0]}")
-                    print(f"predictions[1]: {predictions[1]}")
-
-                    a_acc, a_f1, a_eer = calculate_metrics(a_y, predictions[0])
-                    v_acc, v_f1, v_eer = calculate_metrics(v_y, predictions[1])
+                    a_acc, a_f1, a_eer = calculate_metrics(
+                        a_y, predictions[0], softmaxes[0]
+                    )
+                    v_acc, v_f1, v_eer = calculate_metrics(
+                        v_y, predictions[1], softmaxes[1]
+                    )
                     acc = (a_acc + v_acc) / 2
                     f1 = (a_f1 + v_f1) / 2
                     eer = (a_eer + v_eer) / 2
                 else:
                     y = y[:, 0].cpu().detach().numpy().astype(int)
                     predictions = abs(predictions - 1)
-                    acc, f1, eer = calculate_metrics(y, predictions)
+                    acc, f1, eer = calculate_metrics(y, predictions, softmaxes)
                     avg_acc += acc
                     avg_f1 += f1
                     avg_eer += eer
@@ -287,7 +312,7 @@ def single_sliding_window_eval(config, args, bs):
                 os.makedirs(f"{log_dir}/{args.eval_ds}", exist_ok=True)
                 plot_results(f"{log_dir}/{args.eval_ds}", predictions, y, j)
 
-                acc, f1, eer = calculate_metrics(y, predictions)
+                acc, f1, eer = calculate_metrics(y, predictions, softmax_predictions)
                 print(f"Accuracy: {acc:.4f}")
                 print(f"F1 Score: {f1:.4f}")
                 print(f"EER: {eer:.4f}")

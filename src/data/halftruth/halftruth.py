@@ -135,7 +135,9 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     return audio, label
 
 
-def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
+def audio_collate_fn(audio, a_info, config, sliding_window=False, test=False):
+    label = [i["audio_fake_segments"] for i in a_info]
+
     if not sliding_window:
         if not test:
             audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
@@ -154,8 +156,6 @@ def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
         audio, label = zip(
             *[cut_sliding_window_audio(a, l, config) for a, l in zip(audio, label)]
         )
-        # normalize audio
-        # audio = [normalize(i, dim=1) for i in audio]
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
 
@@ -169,7 +169,7 @@ def halfthruth_collate_fn(batch, config, sliding_window=False, test=False):
     if config.model.task == "audio":
         return audio_collate_fn(
             audio,
-            [i["audio_fake_segments"] for i in a_info],
+            a_info,
             config,
             sliding_window=sliding_window,
             test=test,

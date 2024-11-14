@@ -24,9 +24,9 @@ def eer_s(y_true, y_pred):
     return eer, eer_threshold
 
 
-def calculate_metrics(y_true, y_pred):
+def calculate_metrics(y_true, y_pred, softmax_pred):
     acc = acc_s(y_true, y_pred)
     f1 = f1_s(y_true, y_pred)
-    eer, _ = eer_s(y_true, y_pred)
+    eer, _ = eer_s(y_true, softmax_pred)
 
     return acc, f1, eer

@@ -711,7 +711,62 @@ def cut_sliding_window_audio_video(
     return audio, video, label
 
 
-def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
+def cut_audio_transition(audio, fake_segments, config):
+    n_frames = config.data.window_size
+    sr = config.data.sr
+
+    audio_len = audio.shape[1]
+    audio_frames = n_frames * (sr // config.data.fps)
+    audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
+
+    if len(fake_segments) == 0:
+        return None, None
+    else:
+        audios = []
+        labels = []
+
+        for segment in fake_segments:
+            rtf = segment[0]
+            ftr = segment[1]
+
+            rtf = rtf * sr + audio_frames
+            ftr = ftr * sr + audio_frames
+
+            if config.data.center_transition:
+                rtf_start = floor(rtf - audio_frames // 2)
+                ftr_start = floor(ftr - audio_frames // 2)
+            else:
+                rtf_start = random.randint(rtf - audio_frames + 1, rtf - 1)
+                ftr_start = random.randint(ftr - audio_frames + 1, ftr - 1)
+
+            rtf_audio = audio[:, rtf_start : rtf_start + audio_frames]
+            ftr_audio = audio[:, ftr_start : ftr_start + audio_frames]
+
+            if rtf_audio.shape[1] < audio_frames:
+                rtf_audio = pad(
+                    rtf_audio, (0, audio_frames - rtf_audio.shape[1]), "constant", 0
+                )
+            if ftr_audio.shape[1] < audio_frames:
+                ftr_audio = pad(
+                    ftr_audio, (0, audio_frames - ftr_audio.shape[1]), "constant", 0
+                )
+
+            audios.append(rtf_audio)
+            audios.append(ftr_audio)
+            labels.append([1.0, 0.0])
+            labels.append([0.0, 1.0])
+
+        audio = torch.stack(audios)
+        label = torch.tensor(labels)
+
+    audio = audio.squeeze()
+
+    return audio, label
+
+
+def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
+    label = [i["audio_fake_segments"] for i in av_info]
+
     if not sliding_window:
         if not test:
             audio, label = zip(*[cut_audio(a, l, config) for a, l in zip(audio, label)])
@@ -740,7 +795,9 @@ def audio_collate_fn(audio, label, config, sliding_window=False, test=False):
     return audio, label
 
 
-def video_collate_fn(video, label, config, sliding_window=False, test=False):
+def video_collate_fn(video, av_info, config, sliding_window=False, test=False):
+    label = [i["video_fake_segments"] for i in av_info]
+
     if not sliding_window:
         if not test:
             video, label = zip(*[cut_video(v, l, config) for v, l in zip(video, label)])
@@ -827,6 +884,29 @@ def audio_video_collate_fn(
     return (audio, video), label
 
 
+def audio_transition_collate_fn(
+    audio, av_info, config, sliding_window=False, test=False
+):
+    label = [i["audio_fake_segments"] for i in av_info]
+
+    audio, label = zip(
+        *[
+            cut_audio_transition(a, l, config) for a, l in zip(audio, label)
+        ]  # if l != []]
+    )
+    audio = [x for x in audio if x is not None]
+    label = [x for x in label if x is not None]
+
+    if audio == []:
+        return None, None
+
+    audio = [normalize(a, dim=1) for a in audio]
+    audio = torch.cat(audio)
+    label = torch.cat(label)
+
+    return audio, label
+
+
 def av1m_collate_fn(batch, config, sliding_window=False, test=False):
     x, av_info = batch
     video, audio, _ = zip(*x)
@@ -834,7 +914,7 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
     if config.model.task == "audio":
         return audio_collate_fn(
             audio,
-            [i["audio_fake_segments"] for i in av_info],
+            av_info,
             config,
             sliding_window=sliding_window,
             test=test,
@@ -842,7 +922,7 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
     elif config.model.task == "video":
         return video_collate_fn(
             video,
-            [i["video_fake_segments"] for i in av_info],
+            av_info,
             config,
             sliding_window=sliding_window,
             test=test,
@@ -856,6 +936,15 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
             sliding_window=sliding_window,
             test=test,
         )
+    elif config.model.task == "audio-transition":
+        return audio_transition_collate_fn(
+            audio,
+            av_info,
+            config,
+            sliding_window=False,
+            test=test,
+        )
+        return
 
 
 def npz_decoder(data):
