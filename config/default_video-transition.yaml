@@ -1,8 +1,7 @@
 model:
-  task: 'audio-transition' # 'audio' or 'video' or 'audio-video'
-  # audio-transition classifies a given transition for fake-to-real or real-to-fake
-  encoder: 'config/encoder/default_wavlm.yaml'
-  encoder_freeze: False
+  task: 'video-transition' # 'audio' or 'video' or 'audio_video'
+  encoder: 'config/encoder/default_videomamba.yaml'
+  encoder_freeze: True
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
@@ -18,13 +17,13 @@ data:
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
-  window_size: 4 # frames
+  window_size: 8 # frames
   sliding_window: False
 
 train:
   num_workers: 16
-  batch_size: 64 # 64
-  num_epochs: 15
+  batch_size: 32
+  num_epochs: 30
   optimizer: "adam"
   scheduler: "step"
   lr: 0.0001

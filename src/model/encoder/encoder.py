@@ -28,7 +28,10 @@ class Encoder(nn.Module):
                 self.encoder = WavLM(cfg)
 
         # VIDEO
-        if self.config.model.task == "video":
+        if (
+            self.config.model.task == "video"
+            or self.config.model.task == "video-transition"
+        ):
             if self.config.model.encoder.name.lower() == "videomamba":
                 from src.model.encoder.videomamba.videomamba import (
                     videomamba_middle,

@@ -764,6 +764,81 @@ def cut_audio_transition(audio, fake_segments, config):
     return audio, label
 
 
+def cut_video_transition(video, fake_segments, config):
+    n_frames = config.data.window_size
+    fps = config.data.fps
+
+    video_len = video.shape[0]
+    video_pad = n_frames
+    video = pad(video, (0, 0, 0, 0, 0, 0, video_pad, video_pad), "constant", 0)
+
+    if len(fake_segments) == 0:
+        return None, None
+    else:
+        videos = []
+        labels = []
+
+        for segment in fake_segments:
+            rtf = segment[0]
+            ftr = segment[1]
+
+            rtf = rtf * fps + video_pad
+            ftr = ftr * fps + video_pad
+
+            if config.data.center_transition:
+                rtf_start = floor(rtf - n_frames // 2)
+                ftr_start = floor(ftr - n_frames // 2)
+            else:
+                rtf_start = random.randint(rtf - n_frames + 1, rtf - 1)
+                ftr_start = random.randint(ftr - n_frames + 1, ftr - 1)
+
+            rtf_video = video[rtf_start : rtf_start + n_frames, :, :, :]
+            ftr_video = video[ftr_start : ftr_start + n_frames, :, :, :]
+
+            if rtf_video.shape[0] < n_frames:
+                rtf_video = pad(
+                    rtf_video,
+                    (
+                        0,
+                        config.data.shape[0] - rtf_video.shape[3],
+                        0,
+                        config.data.shape[1] - rtf_video.shape[2],
+                        0,
+                        config.data.shape[2] - rtf_video.shape[1],
+                        0,
+                        n_frames - rtf_video.shape[0],
+                    ),
+                    "constant",
+                    0,
+                )
+            if ftr_video.shape[0] < n_frames:
+                ftr_video = pad(
+                    ftr_video,
+                    (
+                        0,
+                        config.data.shape[0] - ftr_video.shape[3],
+                        0,
+                        config.data.shape[1] - ftr_video.shape[2],
+                        0,
+                        config.data.shape[2] - ftr_video.shape[1],
+                        0,
+                        n_frames - ftr_video.shape[0],
+                    ),
+                    "constant",
+                    0,
+                )
+
+            videos.append(rtf_video)
+            videos.append(ftr_video)
+            labels.append([1.0, 0.0])
+            labels.append([0.0, 1.0])
+
+        video = torch.stack(videos)
+        label = torch.tensor(labels)
+
+    return video, label
+
+
 def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
     label = [i["audio_fake_segments"] for i in av_info]
 
@@ -907,6 +982,31 @@ def audio_transition_collate_fn(
     return audio, label
 
 
+def video_transition_collate_fn(
+    video, av_info, config, sliding_window=False, test=False
+):
+    label = [i["video_fake_segments"] for i in av_info]
+
+    video, label = zip(
+        *[
+            cut_video_transition(v, l, config) for v, l in zip(video, label)
+        ]  # if l != []]
+    )
+
+    video = [x for x in video if x is not None]
+    label = [x for x in label if x is not None]
+
+    if video == []:
+        return None, None
+
+    video = torch.cat(video)
+    label = torch.cat(label)
+
+    video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
+
+    return video, label
+
+
 def av1m_collate_fn(batch, config, sliding_window=False, test=False):
     x, av_info = batch
     video, audio, _ = zip(*x)
@@ -944,7 +1044,15 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
             sliding_window=False,
             test=test,
         )
-        return
+    elif config.model.task == "video-transition":
+        return video_transition_collate_fn(
+            video,
+            av_info,
+            config,
+            sliding_window=False,
+            test=test,
+        )
+    return
 
 
 def npz_decoder(data):
