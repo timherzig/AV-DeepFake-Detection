@@ -39,4 +39,10 @@ def parse_args():
 
     parser.add_argument("--eval_root", type=str, default=None, help="Path to eval root")
 
+    parser.add_argument(
+        "--eval_overlap_add",
+        action="store_true",
+        help="smooth transitions",
+    )
+
     return parser.parse_args()

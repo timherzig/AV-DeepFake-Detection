@@ -20,5 +20,5 @@ class Decoder(nn.Module):
 
             self.decoder = AASIST(config)
 
-    def forward(self, x):
-        return self.decoder(x)
+    def forward(self, x, return_encoding=False):
+        return self.decoder(x, return_encoding=return_encoding)

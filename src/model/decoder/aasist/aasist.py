@@ -517,7 +517,7 @@ class AASIST(nn.Module):
         else:
             self.out_layer = nn.Linear(5 * gat_dims[1], 2)
 
-    def forward(self, x):
+    def forward(self, x, return_encoding=False):
         # -------pre-trained Wav2vec model fine tunning ------------------------##
         # x_ssl_feat = self.ssl_model.extract_feat(x.squeeze(-1))
         x = self.LL(x)  # (bs,frame_number,feat_out_dim)
@@ -609,6 +609,8 @@ class AASIST(nn.Module):
         last_hidden = torch.cat([T_max, T_avg, S_max, S_avg, master.squeeze(1)], dim=1)
 
         last_hidden = self.drop(last_hidden)
+        if return_encoding:
+            return last_hidden
         output = self.out_layer(last_hidden)
 
         if self.config.model.task == "audio-video":

@@ -12,6 +12,8 @@ from math import floor
 from io import BytesIO
 from torch.nn.functional import pad, normalize
 
+CROSSFADE_TIME = 0.02
+
 
 def cut_audio(audio, fake_segments, config):
     n_frames = config.data.window_size
@@ -29,14 +31,67 @@ def cut_audio(audio, fake_segments, config):
 
         label = [0.0, 1.0]
     else:
+        fake_segment = random.choice(fake_segments)
+        start_end = random.randint(
+            0, 1
+        )  # 0 chooses the start, 1 the end of the fake segment
         transition = (
-            random.choice(random.choice(fake_segments)) * sr + audio_frames
+            fake_segment[start_end] * sr + audio_frames
         )  # randomly chosen transition corrected for sample rate and the previous padding
 
         if config.data.center_transition:
             start = floor(transition - audio_frames // 2)
         else:
             start = random.randint(transition - audio_frames + 1, transition - 1)
+
+        if config.data.overlap_add:
+            if random.random() < 0.25:
+                crossfade_time = int(CROSSFADE_TIME * sr)
+                transition_start = int(fake_segment[0] * sr + audio_frames)
+                transition_end = int(fake_segment[1] * sr + audio_frames)
+
+                start_audio = audio[:, 0 : int(transition_start - crossfade_time / 2)]
+                crossfade_audio_start = audio[
+                    :, int(transition_start - crossfade_time / 2) : transition_start
+                ]
+                end_audio = audio[:, int(transition_end + crossfade_time / 2) :]
+                crossfade_audio_end = audio[
+                    :, transition_end : int(transition_end + crossfade_time / 2)
+                ]
+
+                if crossfade_audio_start.shape[1] < int(crossfade_time / 2):
+                    crossfade_audio_start = pad(
+                        crossfade_audio_start,
+                        (int(crossfade_time / 2 - crossfade_audio_start.shape[1]), 0),
+                        "constant",
+                        0,
+                    )
+                if crossfade_audio_end.shape[1] < int(crossfade_time / 2):
+                    crossfade_audio_end = pad(
+                        crossfade_audio_end,
+                        (0, int(crossfade_time / 2 - crossfade_audio_end.shape[1])),
+                        "constant",
+                        0,
+                    )
+
+                    crossfade_audio_start = crossfade_audio_start[
+                        :, : int(crossfade_time / 4)
+                    ]
+                    crossfade_audio_end = crossfade_audio_end[
+                        :, int(crossfade_time / 4) :
+                    ]
+
+                crossfade_audio = crossfade_audio_start * torch.linspace(
+                    1, 0, int(crossfade_audio_start.shape[1])
+                ).unsqueeze(0) + crossfade_audio_end * torch.linspace(
+                    0, 1, int(crossfade_audio_end.shape[1])
+                ).unsqueeze(
+                    0
+                )
+
+                audio = torch.cat((start_audio, crossfade_audio, end_audio), dim=1)
+
+                start = floor(transition_start - audio_frames // 2)
 
         audio = audio[:, start : start + audio_frames]
         label = [1.0, 0.0]
@@ -47,13 +102,15 @@ def cut_audio(audio, fake_segments, config):
     return audio, label
 
 
-def cut_audio_test(audio, fake_segments, config):
+def cut_audio_test(audio, fake_segments, path, config):
     n_frames = config.data.window_size
     sr = config.data.sr
 
     audio_len = audio.shape[1]
     audio_frames = n_frames * (sr // config.data.fps)
     audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
+    paths = []
+    start_end = []
 
     if len(fake_segments) == 0:
         start1 = audio_frames  # In the test case always take the first and last audio segment for consistency
@@ -72,28 +129,146 @@ def cut_audio_test(audio, fake_segments, config):
 
         audio = torch.stack([audio1, audio2, audio3])
         label = torch.tensor([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
-
+        paths = [path, path, path]
+        start_end = [-1, -1, -1]
     else:
         cut_audio = []
         label = []
         for transition in fake_segments:
-            for t in transition:
-                t = t * sr + audio_frames
-                start = floor(t - audio_frames // 2)
-                audio1 = audio[:, start : start + audio_frames]
+            if config.data.eval_overlap_add:
+                # start_t = int(transition[0] * sr + audio_frames)
+                # end_t = int(transition[1] * sr + audio_frames)
+
+                # crossfade_time = int(CROSSFADE_TIME * sr)
+
+                # start_audio = audio[:, 0 : start_t - crossfade_time]
+                # crossfade_audio_start = audio[:, start_t - crossfade_time : start_t]
+                # end_audio = audio[:, end_t + crossfade_time :]
+                # crossfade_audio_end = audio[:, end_t : end_t + crossfade_time]
+
+                # if crossfade_audio_start.shape[1] < crossfade_time:
+                #     crossfade_audio_start = pad(
+                #         crossfade_audio_start,
+                #         (crossfade_time - crossfade_audio_start.shape[1], 0),
+                #         "constant",
+                #         0,
+                #     )
+                # if crossfade_audio_end.shape[1] < crossfade_time:
+                #     crossfade_audio_end = pad(
+                #         crossfade_audio_end,
+                #         (0, crossfade_time - crossfade_audio_end.shape[1]),
+                #         "constant",
+                #         0,
+                #     )
+
+                # crossfade_audio = crossfade_audio_start * torch.linspace(
+                #     1, 0, crossfade_time
+                # ).unsqueeze(0) + crossfade_audio_end * torch.linspace(
+                #     0, 1, crossfade_time
+                # ).unsqueeze(
+                #     0
+                # )
+
+                # audio1 = torch.cat((start_audio, crossfade_audio, end_audio), dim=1)
+
+                crossfade_time = int(CROSSFADE_TIME * sr)
+                transition_start = int(transition[0] * sr + audio_frames)
+                transition_end = int(transition[1] * sr + audio_frames)
+
+                start_audio = audio[:, 0 : int(transition_start - crossfade_time / 2)]
+                crossfade_audio_start = audio[
+                    :, int(transition_start - crossfade_time / 2) : transition_start
+                ]
+                end_audio = audio[:, int(transition_end + crossfade_time / 2) :]
+                crossfade_audio_end = audio[
+                    :, transition_end : int(transition_end + crossfade_time / 2)
+                ]
+
+                if crossfade_audio_start.shape[1] < int(crossfade_time / 2):
+                    crossfade_audio_start = pad(
+                        crossfade_audio_start,
+                        (int(crossfade_time / 2 - crossfade_audio_start.shape[1]), 0),
+                        "constant",
+                        0,
+                    )
+                if crossfade_audio_end.shape[1] < int(crossfade_time / 2):
+                    crossfade_audio_end = pad(
+                        crossfade_audio_end,
+                        (0, int(crossfade_time / 2 - crossfade_audio_end.shape[1])),
+                        "constant",
+                        0,
+                    )
+
+                    crossfade_audio_start = crossfade_audio_start[
+                        :, : int(crossfade_time / 4)
+                    ]
+                    crossfade_audio_end = crossfade_audio_end[
+                        :, int(crossfade_time / 4) :
+                    ]
+
+                crossfade_audio = crossfade_audio_start * torch.linspace(
+                    1, 0, int(crossfade_audio_start.shape[1])
+                ).unsqueeze(0) + crossfade_audio_end * torch.linspace(
+                    0, 1, int(crossfade_audio_end.shape[1])
+                ).unsqueeze(
+                    0
+                )
+
+                audio1 = torch.cat((start_audio, crossfade_audio, end_audio), dim=1)
+
+                start = floor(transition_start - audio_frames // 2)
+
+                # # TMP SAVE 10 AUDIO SAMPLES
+                # save_path = "/netscratch/herzig/shared_projects/synthesis_detection/AV-DeepFake-Detection/tmp_samples"
+                # if not os.path.exists(save_path):
+                #     os.makedirs(save_path)
+                # if len(os.listdir(save_path)) < 20:
+                #     org_save_path = os.path.join(
+                #         save_path,
+                #         f"{len(os.listdir(save_path))}_{transition[0]}_org.wav",
+                #     )
+                #     mod_save_path = os.path.join(
+                #         save_path,
+                #         f"{len(os.listdir(save_path))}_{transition[0]}_mod.wav",
+                #     )
+                #     import torchaudio
+
+                #     torchaudio.save(mod_save_path, audio1, sr)
+                #     torchaudio.save(org_save_path, audio, sr)
+                # # END TMP SAVE
+
+                start = floor(transition_start - audio_frames // 2)
+                audio1 = audio1[:, start : start + audio_frames]
                 if audio1.shape[1] < audio_frames:
                     audio1 = pad(
                         audio1, (0, audio_frames - audio1.shape[1]), "constant", 0
                     )
                 cut_audio.append(audio1)
+
                 label.append([1.0, 0.0])
+                paths.append(path)
+                start_end.append(-1)
+
+            else:
+                for i, t in enumerate(transition):
+                    t = t * sr + audio_frames
+                    start = floor(t - audio_frames // 2)
+                    audio1 = audio[:, start : start + audio_frames]
+                    if audio1.shape[1] < audio_frames:
+                        audio1 = pad(
+                            audio1, (0, audio_frames - audio1.shape[1]), "constant", 0
+                        )
+                    cut_audio.append(audio1)
+                    label.append([1.0, 0.0])
+                    paths.append(path)
+                    start_end.append(i)
 
         audio = torch.stack(cut_audio)
         label = torch.tensor(label)
 
-    audio = audio.squeeze()
+    audio = torch.squeeze(audio, 1)
 
-    return audio, label
+    return audio, label, paths, start_end
 
 
 def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
@@ -841,6 +1016,8 @@ def cut_video_transition(video, fake_segments, config):
 
 def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
     label = [i["audio_fake_segments"] for i in av_info]
+    paths = [i["video_path"] for i in av_info]
+    start_end = []
 
     if not sliding_window:
         if not test:
@@ -850,13 +1027,18 @@ def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
             audio = torch.stack(audio).squeeze()
             label = torch.tensor(label)
         else:
-            audio, label = zip(
-                *[cut_audio_test(a, l, config) for a, l in zip(audio, label)]
+            audio, label, paths, start_end = zip(
+                *[
+                    cut_audio_test(a, l, p, config)
+                    for a, l, p in zip(audio, label, paths)
+                ]
             )
             # normalize audio
             audio = [normalize(a, dim=1) for a in audio]
             audio = torch.cat(audio)
             label = torch.cat(label)
+            paths = [path for p in paths for path in p]
+            start_end = [se for s in start_end for se in s]
     else:
         audio, label = zip(
             *[
@@ -866,6 +1048,9 @@ def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
         )
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
+
+    if config.data.return_path:
+        return audio, label, paths, start_end
 
     return audio, label
 

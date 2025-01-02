@@ -1,7 +1,7 @@
 model:
   task: 'audio' # 'audio' or 'video' or 'audio_video'
   encoder: 'config/encoder/default_wavlm.yaml'
-  encoder_freeze: False
+  encoder_freeze: True
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
@@ -17,7 +17,8 @@ data:
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
-  window_size: 4 # frames
+  overlap_add: True # Artificially adds cut samples that use the overlap add method
+  window_size: 8 # frames
   sliding_window: False
 
 train:

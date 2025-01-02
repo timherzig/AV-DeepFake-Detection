@@ -165,3 +165,5 @@ slurm/
 checkpoints/
 encoder_checkpoints/
 decoder_checkpoints/
+clustering/
+tmp_samples/

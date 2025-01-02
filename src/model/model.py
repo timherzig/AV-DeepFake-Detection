@@ -15,11 +15,14 @@ class Model(nn.Module):
         self.config.model.decoder.encoding_dim = self.encoder.get_encoding_dim()
         self.decoder = Decoder(self.config)
 
-    def forward(self, x):
+    def forward(self, x, return_encoding=False):
         if self.config.model.encoder_freeze:
             with torch.no_grad():
                 x = self.encoder(x)
         else:
             x = self.encoder(x)
-        x = self.decoder(x)
+
+        # if return_encoding:
+        #     return x
+        x = self.decoder(x, return_encoding=return_encoding)
         return x
