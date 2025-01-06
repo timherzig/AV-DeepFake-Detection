@@ -7,6 +7,7 @@ from src.eval import (
 from src.train import train
 from src.util.utils import get_config
 from src.util.parser import parse_args
+from src.util.misc.model_stats import log_model_stats
 from src.util.misc.iterate_dataset import iterate_dataset
 from src.util.misc.create_webdataset import create_webdataset
 from src.util.misc.cluster_spoof_types import cluster_spoof_types
@@ -46,6 +47,9 @@ def main(args):
     elif args.task == "cluster":
         print(f"Clustering spoof types")
         cluster_spoof_types(config, args)
+    elif args.task == "log_model_stats":
+        print(f"Logging model stats")
+        log_model_stats(config, args)
 
     print(f"Done")
 
