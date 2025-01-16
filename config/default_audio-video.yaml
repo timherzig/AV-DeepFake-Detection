@@ -1,7 +1,7 @@
 model:
   task: 'audio-video' # 'audio' or 'video' or 'audio_\-video'
   encoder: 'config/encoder/default_audio-video.yaml'
-  encoder_freeze: False
+  encoder_freeze: True
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
@@ -22,7 +22,7 @@ data:
 
 train:
   num_workers: 16
-  batch_size: 64
+  batch_size: 32
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"
