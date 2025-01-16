@@ -292,6 +292,13 @@ def single_sliding_window_eval(config, args, bs):
 
                 predictions = abs(predictions - 1)
                 y = y[:, 0].cpu().detach().numpy().astype(int)
+                predictions = predictions[
+                    config.data.window_size : -config.data.window_size
+                ]
+                y = y[config.data.window_size : -config.data.window_size]
+                softmax_predictions = softmax_predictions[
+                    config.data.window_size : -config.data.window_size
+                ]
 
                 print(
                     f"Difference between predictions and true: {np.sum(predictions != y)} of {len(y)}"
@@ -311,12 +318,12 @@ def single_sliding_window_eval(config, args, bs):
                 )
 
                 os.makedirs(f"{log_dir}/{args.eval_ds}", exist_ok=True)
-                plot_results(f"{log_dir}/{args.eval_ds}", predictions, y, j)
+                plot_results(f"{log_dir}/{args.eval_ds}", predictions, y, j, config)
 
-                acc, f1, eer = calculate_metrics(y, predictions, softmax_predictions)
-                print(f"Accuracy: {acc:.4f}")
-                print(f"F1 Score: {f1:.4f}")
-                print(f"EER: {eer:.4f}")
+                # acc, f1, eer = calculate_metrics(y, predictions, softmax_predictions)
+                # print(f"Accuracy: {acc:.4f}")
+                # print(f"F1 Score: {f1:.4f}")
+                # print(f"EER: {eer:.4f}")
 
                 if j == 5:
                     break
@@ -390,19 +397,13 @@ def single_transition_eval(config, args, num_samples=10):
     print(f"Number of false negatives: {np.sum((predictions == 0) & (y == 1))}")
 
 
-def plot_results(save_file, predictions, y, j):
+def plot_results(save_file, predictions, y, j, config):
     time = np.arange(len(predictions))
+    # y = y * 0.2
 
     cmap = mcolors.LinearSegmentedColormap.from_list("", ["green", "red"])
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(10, 8))
 
-    plt.bar(
-        time,
-        y,
-        color="blue",
-        # linewidth=1,
-        label="Ground truth",
-    )
     plt.bar(
         time,
         predictions,
@@ -410,8 +411,28 @@ def plot_results(save_file, predictions, y, j):
         # linestyle="--",
         color=cmap(predictions),
         label="Predictions",
-        alpha=0.5,
     )
+
+    # plt.bar(
+    #     time,
+    #     y,
+    #     color="blue",
+    #     # linewidth=1,
+    #     label="Ground truth",
+    # )
+
+    x_markers = time[y == 1]
+    plt.scatter(
+        x_markers,
+        [0] * len(x_markers),
+        color="red",
+        s=200,
+        label="Ground truth transitions",
+        marker="^",
+    )
+
+    plt.xlabel("Time in frames")
+    plt.ylabel("Predicted probability")
 
     plt.legend()
     plt.savefig(f"{save_file}/predictions{j}.png")
