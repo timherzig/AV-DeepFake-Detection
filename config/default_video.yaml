@@ -22,7 +22,7 @@ data:
 
 train:
   num_workers: 16
-  batch_size: 32
+  batch_size: 64
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"

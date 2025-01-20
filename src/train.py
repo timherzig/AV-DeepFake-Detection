@@ -75,7 +75,7 @@ def train(config, args):
             f"Epoch {epoch} - Val Loss: {val_loss} - Val Acc: {val_acc} - Val F1: {val_f1} - Val EER: {val_eer}"
         )
 
-        if val_loss < best_val_loss:
+        if val_loss <= best_val_loss:
             best_val_loss = val_loss
             save_checkpoint(
                 model,
