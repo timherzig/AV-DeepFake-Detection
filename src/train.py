@@ -65,8 +65,8 @@ def train(config, args):
             model,
             model_dir,
             epoch,
-            train_loss,
-            0,
+            99,
+            99,
         )
 
         val_loss, val_acc, val_f1, val_eer = val_epoch(
