@@ -60,6 +60,15 @@ def train(config, args):
             device,
         )
 
+        print(f"Epoch {epoch} - Train Loss: {train_loss}")
+        save_checkpoint(
+            model,
+            model_dir,
+            epoch,
+            train_loss,
+            0,
+        )
+
         val_loss, val_acc, val_f1, val_eer = val_epoch(
             model,
             criterion,
