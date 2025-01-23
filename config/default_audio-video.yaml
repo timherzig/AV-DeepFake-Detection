@@ -10,8 +10,8 @@ data:
   train_parts: "all"
   val_parts: "all"
   test_parts: "all"
-  train_size: -1 # -1 means the complete set 
-  val_size: -1 # -1 means the complete set
+  train_size: 1000 # -1 means the complete set 
+  val_size: 1000 # -1 means the complete set
   test_size: -1 # -1 means the complete set
   shape: [3, 224, 224]
   sr: 16000
@@ -21,8 +21,8 @@ data:
   sliding_window: False
 
 train:
-  num_workers: 16
-  batch_size: 32
+  num_workers: 4
+  batch_size: 8
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"

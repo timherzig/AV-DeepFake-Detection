@@ -8,7 +8,8 @@ import matplotlib.colors as mcolors
 
 from tqdm import tqdm
 from torch.nn.functional import softmax
-from torch.utils._triton import has_triton
+
+# from torch.utils._triton import has_triton
 
 from src.data.data import get_dataloaders
 from src.util.metrics import calculate_metrics
@@ -20,8 +21,8 @@ np.set_printoptions(threshold=sys.maxsize)
 def transition_eval(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
@@ -132,8 +133,8 @@ def sliding_window_eval(config, args, bs):
     config.train.batch_size = 1  # Sliding window only works with batch size 1
     config.data.step_size = args.step_size
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
@@ -246,8 +247,8 @@ def single_sliding_window_eval(config, args, bs):
     config.train.batch_size = 1  # Sliding window only works with batch size 1
     config.data.step_size = args.step_size
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
@@ -333,8 +334,8 @@ def single_transition_eval(config, args, num_samples=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config.data.sliding_window = False
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root

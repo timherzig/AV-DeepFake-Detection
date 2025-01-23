@@ -1,6 +1,6 @@
 model:
   task: 'video' # 'audio' or 'video' or 'audio_video'
-  encoder: 'config/encoder/default_videomamba_16.yaml'
+  encoder: 'config/encoder/default_videomamba_32.yaml'
   encoder_freeze: True
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
@@ -17,7 +17,7 @@ data:
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
-  window_size: 16 # frames
+  window_size: 32 # frames
   sliding_window: False
 
 train:

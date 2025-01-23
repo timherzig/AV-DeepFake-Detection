@@ -5,7 +5,8 @@ import numpy as np
 from tqdm import tqdm
 from functools import partial
 from torch.nn.functional import softmax
-from torch.utils._triton import has_triton
+
+# from torch.utils._triton import has_triton
 from torch.utils.tensorboard import SummaryWriter
 
 from src.util.utils import (
@@ -25,8 +26,8 @@ from src.util.metrics import calculate_metrics
 def train(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     root, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
 
@@ -58,15 +59,6 @@ def train(config, args):
             config,
             writer,
             device,
-        )
-
-        print(f"Epoch {epoch} - Train Loss: {train_loss}")
-        save_checkpoint(
-            model,
-            model_dir,
-            epoch,
-            99,
-            99,
         )
 
         val_loss, val_acc, val_f1, val_eer = val_epoch(

@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm
-from torch.utils._triton import has_triton
+
+# from torch.utils._triton import has_triton
 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -24,8 +25,8 @@ def cluster_spoof_types(config, args):
     config.data.return_path = True
     config.data.test_size = 20000
 
-    if not has_triton():
-        raise RuntimeError("Triton is not available")
+    # if not has_triton():
+    #     raise RuntimeError("Triton is not available")
 
     root, log_dir, model_dir = get_paths(config, create_folders=False, evaluate=True)
     model, _ = get_model_and_checkpoint(config, model_dir, resume=False)

@@ -1270,7 +1270,7 @@ def get_data(tar_paths, config, train=True):
 
     if not config.model.online_encoding:
         dataset = (
-            wds.WebDataset(tar_paths)
+            wds.WebDataset(tar_paths, shardshuffle=False, empty_check=False)
             .decode(
                 wds.handle_extension("npz", npz_decoder),
                 wds.handle_extension("json", json_decoder),
@@ -1280,7 +1280,7 @@ def get_data(tar_paths, config, train=True):
         )
     else:
         dataset = (
-            wds.WebDataset(tar_paths)
+            wds.WebDataset(tar_paths, shardshuffle=False, empty_check=False)
             .decode(
                 wds.torch_video,
                 wds.handle_extension("json", json_decoder),
