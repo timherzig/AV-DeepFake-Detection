@@ -30,6 +30,7 @@ def iterate_split(root, args, media):
             print(f"Skipping {tar} <--------------------------")
             continue
 
+        print(f"Extracting {tar}, {i+1} of {len(tar_list)}")
         # print(f"Extracting {tar}, {i+1} of {len(tar_list)}")
 
         dataset = (
@@ -43,44 +44,21 @@ def iterate_split(root, args, media):
         )
 
         for i, (video, meta) in enumerate(dataset):
-            for m in meta:
-                # if (
-                #     len(m["audio_fake_segments"]) == 0
-                #     and len(m["video_fake_segments"]) == 0
-                # ):
-                #     real += 1
-                # elif (
-                #     len(m["audio_fake_segments"]) > 0
-                #     and len(m["video_fake_segments"]) == 0
-                # ):
-                #     fake_audio += 1
-                # elif (
-                #     len(m["video_fake_segments"]) > 0
-                #     and len(m["audio_fake_segments"]) == 0
-                # ):
-                #     fake_video += 1
-                # else:
-                #     fake_audio_fake_video += 1
+            # for m in meta:
+            #     if len(m["audio_fake_segments"]) == 0:
+            #         real += 1
+            #     else:
+            #         fake_audio += 1
+            video_len = len(video)
 
-                # if m["audio_model"] == "yourtts":
-                #     yourtts += 1
-                # elif m["audio_model"] == "vits":
-                #     vits += 1
-                # else:
-                #     no_tts += 1
-                if len(m["audio_fake_segments"]) == 0:
-                    real += 1
-                else:
-                    fake_audio += 1
+    # with open(f"{root + '_stats.txt'}", "w") as f:
+    #     f.write(
+    #         f"Real: {real}, Fake Audio only: {fake_audio}"  # , Fake Video only: {fake_video}, Fake Audio and Video {fake_audio_fake_video}, YourTTS: {yourtts}, VITS: {vits}, No TTS: {no_tts}"
+    #     )
 
-    with open(f"{root + '_stats.txt'}", "w") as f:
-        f.write(
-            f"Real: {real}, Fake Audio only: {fake_audio}"  # , Fake Video only: {fake_video}, Fake Audio and Video {fake_audio_fake_video}, YourTTS: {yourtts}, VITS: {vits}, No TTS: {no_tts}"
-        )
-
-    print(
-        f"Real: {real}, Fake Audio only: {fake_audio}"  # , Fake Video only: {fake_video}, Fake Audio and Video {fake_audio_fake_video}, YourTTS: {yourtts}, VITS: {vits}, No TTS: {no_tts}"
-    )
+    # print(
+    #     f"Real: {real}, Fake Audio only: {fake_audio}"  # , Fake Video only: {fake_video}, Fake Audio and Video {fake_audio_fake_video}, YourTTS: {yourtts}, VITS: {vits}, No TTS: {no_tts}"
+    # )
 
     return
 
@@ -94,18 +72,18 @@ def iterate_dataset(args):
     #     iterate_split(os.path.join(root, "train"), args, media)
 
     # AV1M case
-    # if os.path.exists(os.path.join(root, "val")):
-    #     print(f"Processing Val - {root}")
-    #     iterate_split(os.path.join(root, "val"), args, media)
+    if os.path.exists(os.path.join(root, "val")):
+        print(f"Processing Val - {root}")
+        iterate_split(os.path.join(root, "val"), args, media)
 
     # PartialSpoof case
     # if os.path.exists(os.path.join(root, "dev")):
     #     iterate_split(os.path.join(root, "dev"), args, media)
 
     # AV1M case
-    if os.path.exists(os.path.join(root, "test")):
-        print(f"Processing Test - {root}")
-        iterate_split(os.path.join(root, "test"), args, media)
+    # if os.path.exists(os.path.join(root, "test")):
+    #     print(f"Processing Test - {root}")
+    #     iterate_split(os.path.join(root, "test"), args, media)
 
     # PartialSpoof case
     # if os.path.exists(os.path.join(root, "eval")):
