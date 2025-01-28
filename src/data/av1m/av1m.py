@@ -1049,6 +1049,9 @@ def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
 
+    if audio.dim() == 2:
+        audio = audio.unsqueeze(0)
+
     if config.data.return_path:
         return audio, label, paths, start_end
 
@@ -1078,6 +1081,9 @@ def video_collate_fn(video, av_info, config, sliding_window=False, test=False):
         )
         video = torch.cat(video).squeeze()
         label = torch.cat(label)
+
+    if video.dim() == 4:
+        video = video.unsqueeze(0)
 
     video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
 
@@ -1139,7 +1145,12 @@ def audio_video_collate_fn(
         video = torch.cat(video).squeeze()
         label = torch.cat(label)
 
+    if video.dim() == 4:
+        video = video.unsqueeze(0)
     video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
+
+    if audio.dim() == 2:
+        audio = audio.unsqueeze(0)
 
     return (audio, video), label
 
@@ -1164,6 +1175,9 @@ def audio_transition_collate_fn(
     audio = torch.cat(audio)
     label = torch.cat(label)
 
+    if audio.dim() == 2:
+        audio = audio.unsqueeze(0)
+
     return audio, label
 
 
@@ -1187,6 +1201,8 @@ def video_transition_collate_fn(
     video = torch.cat(video)
     label = torch.cat(label)
 
+    if video.dim() == 4:
+        video = video.unsqueeze(0)
     video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
 
     return video, label
@@ -1270,12 +1286,7 @@ def get_data(tar_paths, config, train=True):
 
     if not config.model.online_encoding:
         dataset = (
-            wds.WebDataset(
-                tar_paths,
-                shardshuffle=False,
-                empty_check=False,
-                handler=wds.warn_and_continue,
-            )
+            wds.WebDataset(tar_paths, shardshuffle=False, empty_check=False)
             .decode(
                 wds.handle_extension("npz", npz_decoder),
                 wds.handle_extension("json", json_decoder),
@@ -1285,12 +1296,7 @@ def get_data(tar_paths, config, train=True):
         )
     else:
         dataset = (
-            wds.WebDataset(
-                tar_paths,
-                shardshuffle=False,
-                empty_check=False,
-                handler=wds.warn_and_continue,
-            )
+            wds.WebDataset(tar_paths, shardshuffle=False, empty_check=False)
             .decode(
                 wds.torch_video,
                 wds.handle_extension("json", json_decoder),
