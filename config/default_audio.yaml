@@ -1,7 +1,7 @@
 model:
   task: 'audio' # 'audio' or 'video' or 'audio_video'
   encoder: 'config/encoder/default_wavlm.yaml'
-  encoder_freeze: True
+  encoder_freeze: False
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
 
