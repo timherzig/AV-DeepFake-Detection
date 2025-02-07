@@ -45,7 +45,7 @@ def cut_audio(audio, fake_segments, config):
             start = random.randint(transition - audio_frames + 1, transition - 1)
 
         if config.data.overlap_add:
-            if random.random() < 0.25:
+            if random.random() < config.data.overlap_add_prob:
                 crossfade_time = int(CROSSFADE_TIME * sr)
                 transition_start = int(fake_segment[0] * sr + audio_frames)
                 transition_end = int(fake_segment[1] * sr + audio_frames)
@@ -1049,11 +1049,13 @@ def audio_collate_fn(audio, av_info, config, sliding_window=False, test=False):
         audio = torch.cat(audio).squeeze()
         label = torch.cat(label)
 
-    if audio.dim() == 2:
-        audio = audio.unsqueeze(0)
+    # if audio.dim() == 2:
+    #     audio = audio.unsqueeze(1)
 
     if config.data.return_path:
         return audio, label, paths, start_end
+
+    # print(f"audio.shape: {audio.shape}")
 
     return audio, label
 
