@@ -53,6 +53,8 @@ def transition_eval(config, args):
                 pbar.set_description(f"Evaluating   ")
 
                 x, y = batch
+                if x is None:
+                    continue
                 if config.model.task == "audio-video":
                     x = (x[0].to(device), x[1].to(device))
                 else:
