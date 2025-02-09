@@ -135,6 +135,59 @@ def cut_sliding_window_audio(audio, fake_segments, config, step_size=4):
     return audio, label
 
 
+def cut_audio_transition(audio, fake_segments, config):
+    window_size = config.data.window_size
+    sr = config.data.sr
+    fps = config.data.fps
+
+    window_size = window_size * (sr // fps)
+    audio = pad(audio, (window_size, window_size), "constant", 0)
+
+    if len(fake_segments) == 0:
+        return None, None
+    else:
+        audios = []
+        labels = []
+
+        for segment in fake_segments:
+            rtf = float(segment[0])
+            ftr = float(segment[1])
+
+            rtf = rtf * sr + window_size
+            ftr = ftr * sr + window_size
+
+            if config.data.center_transition:
+                rtf_start = floor(rtf - window_size // 2)
+                ftr_start = floor(ftr - window_size // 2)
+            else:
+                rtf_start = random.randint(rtf - window_size + 1, rtf - 1)
+                ftr_start = random.randint(ftr - window_size + 1, ftr - 1)
+
+            rtf_audio = audio[:, rtf_start : rtf_start + window_size]
+            ftr_audio = audio[:, ftr_start : ftr_start + window_size]
+
+            if rtf_audio.shape[1] < window_size:
+                rtf_audio = pad(
+                    rtf_audio, (0, window_size - rtf_audio.shape[1]), "constant", 0
+                )
+            if ftr_audio.shape[1] < window_size:
+                ftr_audio = pad(
+                    ftr_audio, (0, window_size - ftr_audio.shape[1]), "constant", 0
+                )
+
+            audios.append(rtf_audio)
+            audios.append(ftr_audio)
+            labels.append([1.0, 0.0])
+            labels.append([0.0, 1.0])
+
+        audio = torch.stack(audios)
+        label = torch.tensor(labels)
+
+    audio = audio.squeeze()
+
+    return audio, label
+
+
 def audio_collate_fn(audio, a_info, config, sliding_window=False, test=False):
     label = [i["audio_fake_segments"] for i in a_info]
 
@@ -162,6 +215,33 @@ def audio_collate_fn(audio, a_info, config, sliding_window=False, test=False):
     return audio, label
 
 
+def transition_collate_fn(audio, av_info, config, sliding_window=False, test=False):
+    label = [i["audio_fake_segments"] for i in av_info]
+
+    audio, label = zip(
+        *[
+            cut_audio_transition(a, l, config) for a, l in zip(audio, label)
+        ]  # if l != []]
+    )
+    audio = [x for x in audio if x is not None]
+    label = [x for x in label if x is not None]
+
+    if audio == []:
+        return None, None
+
+    # for i in range(len(audio)):
+    #     print(f"audio dimension: {audio[i].shape}, label dimension: {label[i].shape}")
+
+    audio = [normalize(a, dim=1) for a in audio]
+    audio = torch.cat(audio)
+    label = torch.cat(label)
+
+    # if audio.dim() == 2:
+    #     audio = audio.unsqueeze(0)
+
+    return audio, label
+
+
 def halfthruth_collate_fn(batch, config, sliding_window=False, test=False):
     audio, a_info = batch
     audio, _ = zip(*audio)
@@ -176,6 +256,14 @@ def halfthruth_collate_fn(batch, config, sliding_window=False, test=False):
         )
     elif config.model.task == "video":
         raise NotImplementedError("HalfTruth is audio only")
+    elif config.model.task == "audio-transition":
+        return transition_collate_fn(
+            audio,
+            a_info,
+            config,
+            sliding_window=sliding_window,
+            test=test,
+        )
 
 
 def json_decoder(data):
