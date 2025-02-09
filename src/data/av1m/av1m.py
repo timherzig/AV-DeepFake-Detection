@@ -12,8 +12,6 @@ from math import floor
 from io import BytesIO
 from torch.nn.functional import pad, normalize
 
-CROSSFADE_TIME = 0.02
-
 
 def cut_audio(audio, fake_segments, config):
     n_frames = config.data.window_size
@@ -45,8 +43,8 @@ def cut_audio(audio, fake_segments, config):
             start = random.randint(transition - audio_frames + 1, transition - 1)
 
         if config.data.overlap_add:
-            if random.random() < config.data.overlap_add_prob:
-                crossfade_time = int(CROSSFADE_TIME * sr)
+            if random.random() <= config.data.overlap_add_prob:
+                crossfade_time = int(config.data.overlap_add_time * sr)
                 transition_start = int(fake_segment[0] * sr + audio_frames)
                 transition_end = int(fake_segment[1] * sr + audio_frames)
 
@@ -890,7 +888,6 @@ def cut_audio_transition(audio, fake_segments, config):
     n_frames = config.data.window_size
     sr = config.data.sr
 
-    audio_len = audio.shape[1]
     audio_frames = n_frames * (sr // config.data.fps)
     audio = pad(audio, (audio_frames, audio_frames), "constant", 0)
 
@@ -1177,8 +1174,8 @@ def audio_transition_collate_fn(
     audio = torch.cat(audio)
     label = torch.cat(label)
 
-    if audio.dim() == 2:
-        audio = audio.unsqueeze(0)
+    # if audio.dim() == 2:
+    #     audio = audio.unsqueeze(0)
 
     return audio, label
 
