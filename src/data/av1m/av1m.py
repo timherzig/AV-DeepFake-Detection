@@ -1144,12 +1144,12 @@ def audio_video_collate_fn(
         video = torch.cat(video).squeeze()
         label = torch.cat(label)
 
-    if video.dim() == 4:
-        video = video.unsqueeze(0)
+    # if video.dim() == 4:
+    #     video = video.unsqueeze(0)
     video = video.type(torch.float32).permute(0, 4, 1, 2, 3)
 
-    if audio.dim() == 2:
-        audio = audio.unsqueeze(0)
+    # if audio.dim() == 2:
+    #     audio = audio.unsqueeze(0)
 
     return (audio, video), label
 

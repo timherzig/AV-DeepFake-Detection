@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.util.utils import (
     get_paths,
     get_model_and_checkpoint,
+    get_multimodal_model_and_checkpoint,
     get_optimizer_and_scheduler,
     get_critierion,
     save_checkpoint,
@@ -26,9 +27,6 @@ from src.util.metrics import calculate_metrics
 def train(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # if not has_triton():
-    #     raise RuntimeError("Triton is not available")
-
     root, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
 
     writer = SummaryWriter(log_dir=log_dir)
@@ -37,7 +35,10 @@ def train(config, args):
         ["train", "val"], args.data_root, config, test=False
     )
 
-    model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
+    if config.model.task == "audio-video":
+        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+    else:
+        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
     optimizer, scheduler = get_optimizer_and_scheduler(model, config)
     criterion = get_critierion(config)
 

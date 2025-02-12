@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
 from src.model.model import Model
+from src.model.multimodal_model import Multimodal_Model
 
 
 def get_config(config_path):
@@ -65,6 +66,46 @@ def get_paths(config, create_folders=True, evaluate=False, root=None):
             f.write("Notes")
 
     return root, log_dir, model_dir
+
+
+def get_multimodal_model_and_checkpoint(config, resume=True):
+    audio_config = get_config(config.model.audio_config)
+    video_config = get_config(config.model.video_config)
+
+    audio_root, _, audio_model_dir = get_paths(
+        audio_config, create_folders=False, evaluate=True, root=config.model.audio_root
+    )
+
+    audio_checkpoints = os.listdir(audio_model_dir)
+    if len(audio_checkpoints) > 0:
+        audio_checkpoints = sorted(
+            audio_checkpoints, key=lambda x: int(x.split("_")[2])
+        )
+        audio_checkpoint = torch.load(
+            os.path.join(audio_model_dir, audio_checkpoints[-1])
+        )
+
+    video_root, _, video_model_dir = get_paths(
+        video_config, create_folders=False, evaluate=True, root=config.model.video_root
+    )
+
+    video_checkpoints = os.listdir(video_model_dir)
+    if len(video_checkpoints) > 0:
+        video_checkpoints = sorted(
+            video_checkpoints, key=lambda x: int(x.split("_")[2])
+        )
+        video_checkpoint = torch.load(
+            os.path.join(video_model_dir, video_checkpoints[-1])
+        )
+
+    model = Multimodal_Model(
+        audio_config,
+        video_config,
+        audio_weights=audio_checkpoint["model_state_dict"],
+        video_weights=video_checkpoint["model_state_dict"],
+    )
+
+    return model, None
 
 
 def get_model_and_checkpoint(config, model_dir, resume=True):

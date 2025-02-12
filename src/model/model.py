@@ -22,7 +22,5 @@ class Model(nn.Module):
         else:
             x = self.encoder(x)
 
-        # if return_encoding:
-        #     return x
         x = self.decoder(x, return_encoding=return_encoding)
         return x

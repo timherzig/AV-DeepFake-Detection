@@ -613,7 +613,7 @@ class AASIST(nn.Module):
             return last_hidden
         output = self.out_layer(last_hidden)
 
-        if self.config.model.task == "audio-video":
-            output = output.view(-1, 2, 2)
+        # if self.config.model.task == "audio-video":
+        #     output = output.view(-1, 2, 2)
 
         return output
