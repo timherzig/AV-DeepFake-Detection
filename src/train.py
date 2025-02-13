@@ -35,7 +35,7 @@ def train(config, args):
         ["train", "val"], args.data_root, config, test=False
     )
 
-    if config.model.task == "audio-video":
+    if "audio-video-lf" in config.model.task:
         model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
     else:
         model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
@@ -115,7 +115,7 @@ def train_epoch(
             if x is None and y is None:
                 continue
 
-            if config.model.task == "audio-video":
+            if "audio-video" in config.model.task:
                 x = (x[0].to(device), x[1].to(device))
             else:
                 x = x.to(device)
@@ -125,9 +125,18 @@ def train_epoch(
             y_pred = model(x)
 
             if "logits" not in config.train.loss:
-                y_pred = softmax(y_pred, dim=1)
+                if y_pred.dim() == 3:
+                    y_pred1 = softmax(y_pred[:, 0], dim=1)
+                    y_pred2 = softmax(y_pred[:, 1], dim=1)
 
-            loss = criterion(y_pred, y)
+                    loss1 = criterion(y_pred1, y[:, 0])
+                    loss2 = criterion(y_pred2, y[:, 1])
+
+                    loss = loss1 + loss2
+                else:
+                    y_pred = softmax(y_pred, dim=1)
+                    loss = criterion(y_pred, y)
+
             loss.backward()
             optimizer.step()
 
@@ -152,7 +161,7 @@ def val_epoch(
     iters = 0
     running_loss = 0.0
 
-    if config.model.task == "audio-video":
+    if "audio-video" in config.model.task:
         running_y_true = [np.array([]), np.array([])]
         running_y_pred = [np.array([]), np.array([])]
         running_softmax = [np.array([]), np.array([])]
@@ -173,7 +182,7 @@ def val_epoch(
             if x is None and y is None:
                 continue
 
-            if config.model.task == "audio-video":
+            if "audio-video" in config.model.task:
                 x = (x[0].to(device), x[1].to(device))
             else:
                 x = x.to(device)
@@ -183,15 +192,25 @@ def val_epoch(
                 y_pred = model(x)
 
                 if "logits" not in config.train.loss:
-                    y_pred = softmax(y_pred, dim=1)
-                loss = criterion(y_pred, y)
+                    if y_pred.dim() == 3:
+                        y_pred1 = softmax(y_pred[:, 0], dim=1)
+                        y_pred2 = softmax(y_pred[:, 1], dim=1)
+                        y_pred = torch.stack([y_pred1, y_pred2], dim=1)
 
-            y_pred = softmax(y_pred, dim=1)
+                        loss1 = criterion(y_pred1, y[:, 0])
+                        loss2 = criterion(y_pred2, y[:, 1])
+
+                        loss = loss1 + loss2
+                    else:
+                        y_pred = softmax(y_pred, dim=1)
+                        loss = criterion(y_pred, y)
+
+            # y_pred = softmax(y_pred, dim=1)
             y_softmax = y_pred[:, 0].cpu().detach().numpy()
             y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
             y = torch.argmax(y, dim=1).cpu().detach().numpy()
 
-            if config.model.task == "audio-video":
+            if "audio-video" in config.model.task:
                 running_y_true[0] = np.concatenate([running_y_true[0], y[0]])
                 running_y_true[1] = np.concatenate([running_y_true[1], y[1]])
                 running_y_pred[0] = np.concatenate([running_y_pred[0], y_pred[0]])
@@ -213,13 +232,15 @@ def val_epoch(
 
     running_loss /= iters
 
-    if config.model.task == "audio-video":
+    if "audio-video" in config.model.task:
         a_acc, a_f1, a_eer = calculate_metrics(
             running_y_true[0], running_y_pred[0], running_softmax[0]
         )
         v_acc, v_f1, v_eer = calculate_metrics(
             running_y_true[1], running_y_pred[1], running_softmax[1]
         )
+
+        print(f"   ---   Audio EER: {a_eer} - Video EER: {v_eer}   ---   ")
 
         acc = (a_acc + v_acc) / 2
         f1 = (a_f1 + v_f1) / 2

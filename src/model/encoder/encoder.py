@@ -85,7 +85,7 @@ class Encoder(nn.Module):
 
                 self.encoder = JPEG(self.config)
 
-        if self.config.model.task == "audio-video":
+        if "audio-video" in self.config.model.task:
             # AUDIO
             audio_encoder = None
 
@@ -124,7 +124,7 @@ class Encoder(nn.Module):
             self.encoder = nn.ModuleList([audio_encoder, video_encoder])
 
     def forward(self, x):
-        if self.config.model.task == "audio-video":
+        if "audio-video" in self.config.model.task:
             audio_x, video_x = x
 
             audio_x = self.encoder[0](audio_x)
@@ -156,7 +156,7 @@ class Encoder(nn.Module):
         return self.encoder(x)
 
     def get_encoding_dim(self):
-        if self.config.model.task == "audio-video":
+        if "audio-video" in self.config.model.task:
             return (
                 self.encoder[0].get_encoding_dim() + self.encoder[1].get_encoding_dim()
             )
@@ -164,7 +164,7 @@ class Encoder(nn.Module):
         return self.encoder.get_encoding_dim()
 
     def get_temporal_dim(self):
-        if self.config.model.task == "audio-video":
+        if "audio-video" in self.config.model.task:
             return max(
                 self.encoder[0].get_temporal_dim(
                     window_size=self.config.data.window_size

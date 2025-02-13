@@ -1,5 +1,5 @@
 model:
-  task: 'audio-video'
+  task: 'audio-video-lf'
   encoder:
     name: 'wavlm-videomamba'
   decoder:

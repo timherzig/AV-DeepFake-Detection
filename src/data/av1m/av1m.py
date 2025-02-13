@@ -1227,7 +1227,7 @@ def av1m_collate_fn(batch, config, sliding_window=False, test=False):
             sliding_window=sliding_window,
             test=test,
         )
-    elif config.model.task == "audio-video":
+    elif "audio-video" in config.model.task:
         return audio_video_collate_fn(
             audio,
             video,

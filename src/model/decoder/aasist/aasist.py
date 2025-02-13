@@ -512,7 +512,7 @@ class AASIST(nn.Module):
         self.pool_hS2 = GraphPool(pool_ratios[2], gat_dims[1], 0.3)
         self.pool_hT2 = GraphPool(pool_ratios[2], gat_dims[1], 0.3)
 
-        if self.config.model.task == "audio-video":
+        if "audio-video-ef" in self.config.model.task:
             self.out_layer = nn.Linear(5 * gat_dims[1], 4)
         else:
             self.out_layer = nn.Linear(5 * gat_dims[1], 2)
@@ -613,7 +613,7 @@ class AASIST(nn.Module):
             return last_hidden
         output = self.out_layer(last_hidden)
 
-        # if self.config.model.task == "audio-video":
-        #     output = output.view(-1, 2, 2)
+        if "audio-video-ef" in self.config.model.task:
+            output = output.view(-1, 2, 2)
 
         return output
