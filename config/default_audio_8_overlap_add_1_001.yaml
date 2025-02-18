@@ -1,16 +1,9 @@
 model:
-  task: 'audio-video-lf'
-  encoder:
-    name: 'wavlm-videomamba'
-  decoder:
-    name: 'aasist'
-  audio_config: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_02/config.yaml'
-  audio_root: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_02'
-  video_config: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8/config.yaml'
-  video_root: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8'
+  task: 'audio' # 'audio' or 'video' or 'audio_video'
+  encoder: 'config/encoder/default_wavlm.yaml'
+  encoder_freeze: False
+  decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
-  encoder_freeze: True
-  conv_fusion: False
 
 data:
   name: 'av1m' # 'av1m' or 'partialspoof' or 'halftruth'
@@ -19,11 +12,14 @@ data:
   test_parts: "all"
   train_size: -1 # -1 means the complete set 
   val_size: -1 # -1 means the complete set
-  test_size: 15000 # -1 means the complete set
+  test_size: -1 # -1 means the complete set
   shape: [3, 224, 224]
   sr: 16000
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
+  overlap_add: True # Artificially adds cut samples that use the overlap add method
+  overlap_add_prob: 1
+  overlap_add_time: 0.01 # seconds = 10ms
   window_size: 8 # frames
   sliding_window: False
 
