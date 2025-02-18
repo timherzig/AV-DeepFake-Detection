@@ -13,7 +13,11 @@ from torch.nn.functional import softmax
 
 from src.data.data import get_dataloaders
 from src.util.metrics import calculate_metrics
-from src.util.utils import get_paths, get_model_and_checkpoint
+from src.util.utils import (
+    get_paths,
+    get_model_and_checkpoint,
+    get_multimodal_model_and_checkpoint,
+)
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -27,7 +31,11 @@ def transition_eval(config, args):
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
-    model, _ = get_model_and_checkpoint(config, model_dir, True)
+
+    if "audio-video-lf" in config.model.task:
+        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+    else:
+        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
 
     config.data.name = args.eval_ds
 
@@ -38,7 +46,7 @@ def transition_eval(config, args):
     model.to(device)
     model.eval()
 
-    if config.model.task == "audio-video":
+    if "audio-video" in config.model.task:
         running_y_true = [np.array([]), np.array([])]
         running_y_pred = [np.array([]), np.array([])]
         running_y_pred_softmax = [np.array([]), np.array([])]
@@ -63,13 +71,18 @@ def transition_eval(config, args):
 
                 y_pred = model(x)
 
-                y_pred = softmax(y_pred, dim=1)
+                if y_pred.dim() == 3:
+                    y_pred1 = softmax(y_pred[:, 0], dim=1)
+                    y_pred2 = softmax(y_pred[:, 1], dim=1)
+                    y_pred = torch.stack([y_pred1, y_pred2], dim=1)
+                else:
+                    y_pred = softmax(y_pred, dim=1)
                 softmax_predictions = y_pred[:, 0].cpu().detach().numpy()
                 y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
                 y = y[:, 0].cpu().detach().numpy().astype(int)
                 y_pred = abs(y_pred - 1)
 
-                if config.model.task == "audio-video":
+                if "audio-video" in config.model.task:
                     running_y_true[0] = np.concatenate([running_y_true[0], y[0]])
                     running_y_true[1] = np.concatenate([running_y_true[1], y[1]])
                     running_y_pred[0] = np.concatenate([running_y_pred[0], y_pred[0]])
@@ -91,7 +104,7 @@ def transition_eval(config, args):
     # running_y_true = np.concatenate([running_y_true, np.array([1]), np.array([0])])
     # running_y_pred = np.concatenate([running_y_pred, np.array([1]), np.array([0])])
 
-    if config.model.task == "audio-video":
+    if "audio-video" in config.model.task:
         a_acc, a_f1, a_eer = calculate_metrics(
             running_y_true[0], running_y_pred[0], running_y_pred_softmax[0]
         )
@@ -141,7 +154,10 @@ def sliding_window_eval(config, args, bs):
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
-    model, _ = get_model_and_checkpoint(config, model_dir, True)
+    if "audio-video-lf" in config.model.task:
+        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+    else:
+        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
 
     config.data.name = args.eval_ds
 
@@ -155,6 +171,8 @@ def sliding_window_eval(config, args, bs):
     avg_acc = 0
     avg_f1 = 0
     avg_eer = 0
+    audio_eer = 0
+    video_eer = 0
 
     with torch.no_grad():
         with tqdm(test_dl, total=math.ceil(test_len / config.train.batch_size)) as pbar:
@@ -162,7 +180,7 @@ def sliding_window_eval(config, args, bs):
                 pbar.set_description(f"Evaluating   ")
                 n_iter = 0
                 x, y = batch
-                if config.model.task == "audio-video":
+                if "audio-video" in config.model.task:
                     x = (x[0].to(device), x[1].to(device))
                     n_iter = x[0].shape[0]
                     predictions = [np.array([], dtype=int), np.array([], dtype=int)]
@@ -175,19 +193,22 @@ def sliding_window_eval(config, args, bs):
                 y = y.to(device)
 
                 for i in range(0, n_iter, bs):
-                    if config.model.task == "audio-video":
+                    if "audio-video" in config.model.task:
                         window = (x[0][i : i + bs, :], x[1][i : i + bs, :])
                     else:
                         window = x[i : i + bs, :]
                     y_pred = model(window)
 
-                    if config.model.task == "audio-video":
+                    if "audio-video" in config.model.task:
                         a_pred = softmax(y_pred[:, 0], dim=1)
                         softmaxes[0] = np.concatenate(
-                            [softmaxes[0], a_pred[:, 0].cpu().detach().numpy()]
+                            [softmaxes[0], a_pred[:, 1].cpu().detach().numpy()]
                         )
                         a_pred = torch.argmax(a_pred, dim=1).cpu().detach().numpy()
                         v_pred = softmax(y_pred[:, 1], dim=1)
+                        softmaxes[1] = np.concatenate(
+                            [softmaxes[1], v_pred[:, 1].cpu().detach().numpy()]
+                        )
                         v_pred = torch.argmax(v_pred, dim=1).cpu().detach().numpy()
 
                         predictions[0] = np.concatenate(
@@ -199,16 +220,14 @@ def sliding_window_eval(config, args, bs):
                     else:
                         y_pred = softmax(y_pred, dim=1)
                         softmaxes = np.concatenate(
-                            [softmaxes, y_pred[:, 0].cpu().detach().numpy()]
+                            [softmaxes, y_pred[:, 1].cpu().detach().numpy()]
                         )
                         y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
                         predictions = np.concatenate([predictions, y_pred.astype(int)])
 
-                if config.model.task == "audio-video":
+                if "audio-video" in config.model.task:
                     a_y = y[:, 0, 0].cpu().detach().numpy().astype(int)
                     v_y = y[:, 1, 0].cpu().detach().numpy().astype(int)
-                    predictions[0] = abs(predictions[0] - 1)
-                    predictions[1] = abs(predictions[1] - 1)
 
                     a_acc, a_f1, a_eer = calculate_metrics(
                         a_y, predictions[0], softmaxes[0]
@@ -216,20 +235,36 @@ def sliding_window_eval(config, args, bs):
                     v_acc, v_f1, v_eer = calculate_metrics(
                         v_y, predictions[1], softmaxes[1]
                     )
+                    print(
+                        f" --- Audio ---\nAccuracy: {a_acc:.4f}\nF1 Score: {a_f1:.4f}\nEER: {a_eer:.4f}"
+                    )
+                    print(
+                        f" --- Video ---\nAccuracy: {v_acc:.4f}\nF1 Score: {v_f1:.4f}\nEER: {v_eer:.4f}"
+                    )
                     acc = (a_acc + v_acc) / 2
                     f1 = (a_f1 + v_f1) / 2
                     eer = (a_eer + v_eer) / 2
+
+                    audio_eer += a_eer
+                    video_eer += v_eer
                 else:
                     y = y[:, 0].cpu().detach().numpy().astype(int)
-                    predictions = abs(predictions - 1)
+                    # predictions = abs(predictions - 1)
                     acc, f1, eer = calculate_metrics(y, predictions, softmaxes)
-                    avg_acc += acc
-                    avg_f1 += f1
-                    avg_eer += eer
+
+                avg_acc += acc
+                avg_f1 += f1
+                avg_eer += eer
 
     avg_acc /= test_len
     avg_f1 /= test_len
     avg_eer /= test_len
+
+    if "audio-video" in config.model.task:
+        audio_eer /= test_len
+        video_eer /= test_len
+        print(f"Average Audio EER: {audio_eer:.4f}")
+        print(f"Average Video EER: {video_eer:.4f}")
 
     print(f"Accuracy: {avg_acc:.4f}")
     print(f"F1 Score: {avg_f1:.4f}")
@@ -241,6 +276,9 @@ def sliding_window_eval(config, args, bs):
         f.write(f"Accuracy: {avg_acc:.4f}\n")
         f.write(f"F1 Score: {avg_f1:.4f}\n")
         f.write(f"EER: {avg_eer:.4f}\n")
+        if "audio-video" in config.model.task:
+            f.write(f"Average Audio EER: {audio_eer:.4f}\n")
+            f.write(f"Average Video EER: {video_eer:.4f}\n")
 
 
 def single_sliding_window_eval(config, args, bs):

@@ -1,7 +1,11 @@
 import os
 import torch
 
-from src.util.utils import get_paths, get_model_and_checkpoint
+from src.util.utils import (
+    get_paths,
+    get_model_and_checkpoint,
+    get_multimodal_model_and_checkpoint,
+)
 
 
 def log_model_stats(config, args):
@@ -23,7 +27,11 @@ def log_model_stats(config, args):
     _, _, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
-    model, _ = get_model_and_checkpoint(config, model_dir, True)
+
+    if "audio-video-lf" in config.model.task:
+        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+    else:
+        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
 
     num_params = sum(p.numel() for p in model.parameters())
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

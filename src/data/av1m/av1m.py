@@ -863,7 +863,9 @@ def cut_sliding_window_audio_video(
     label[:, :, 1] = 1.0
 
     audio_fake_segments = [i for ii in audio_fake_segments for i in ii]
+    audio_fake_segments.append(0.0)
     video_fake_segments = [i for ii in video_fake_segments for i in ii]
+    video_fake_segments.append(0.0)
 
     for t in audio_fake_segments:
         t = t * fps + window_size
