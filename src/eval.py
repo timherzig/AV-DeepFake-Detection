@@ -171,6 +171,10 @@ def sliding_window_eval(config, args, bs):
     avg_acc = 0
     avg_f1 = 0
     avg_eer = 0
+    audio_acc = 0
+    video_acc = 0
+    audio_f1 = 0
+    video_f1 = 0
     audio_eer = 0
     video_eer = 0
 
@@ -217,6 +221,7 @@ def sliding_window_eval(config, args, bs):
                         predictions[1] = np.concatenate(
                             [predictions[1], v_pred.astype(int)]
                         )
+
                     else:
                         y_pred = softmax(y_pred, dim=1)
                         softmaxes = np.concatenate(
@@ -229,22 +234,28 @@ def sliding_window_eval(config, args, bs):
                     a_y = y[:, 0, 0].cpu().detach().numpy().astype(int)
                     v_y = y[:, 1, 0].cpu().detach().numpy().astype(int)
 
+                    # print(
+                    #     f" --- Audio ---\n{a_y[:10]}\n{predictions[0][:10]}\n{softmaxes[0][:10]}"
+                    # )
+                    # print(
+                    #     f" --- Video ---\n{v_y[:10]}\n{predictions[1][:10]}\n{softmaxes[1][:10]}"
+                    # )
+
                     a_acc, a_f1, a_eer = calculate_metrics(
                         a_y, predictions[0], softmaxes[0]
                     )
                     v_acc, v_f1, v_eer = calculate_metrics(
                         v_y, predictions[1], softmaxes[1]
                     )
-                    print(
-                        f" --- Audio ---\nAccuracy: {a_acc:.4f}\nF1 Score: {a_f1:.4f}\nEER: {a_eer:.4f}"
-                    )
-                    print(
-                        f" --- Video ---\nAccuracy: {v_acc:.4f}\nF1 Score: {v_f1:.4f}\nEER: {v_eer:.4f}"
-                    )
+
                     acc = (a_acc + v_acc) / 2
                     f1 = (a_f1 + v_f1) / 2
                     eer = (a_eer + v_eer) / 2
 
+                    audio_acc += a_acc
+                    video_acc += v_acc
+                    audio_f1 += a_f1
+                    video_f1 += v_f1
                     audio_eer += a_eer
                     video_eer += v_eer
                 else:
@@ -261,10 +272,18 @@ def sliding_window_eval(config, args, bs):
     avg_eer /= test_len
 
     if "audio-video" in config.model.task:
+        audio_acc /= test_len
+        video_acc /= test_len
+        audio_f1 /= test_len
+        video_f1 /= test_len
         audio_eer /= test_len
         video_eer /= test_len
-        print(f"Average Audio EER: {audio_eer:.4f}")
-        print(f"Average Video EER: {video_eer:.4f}")
+        print(
+            f" --- Average ---\nAccuracy: {avg_acc:.4f}\nF1 Score: {avg_f1:.4f}\nEER: {avg_eer:.4f}"
+        )
+        print(
+            f" --- Audio ---\nAccuracy: {audio_acc:.4f}\nF1 Score: {audio_f1:.4f}\nEER: {audio_eer:.4f}"
+        )
 
     print(f"Accuracy: {avg_acc:.4f}")
     print(f"F1 Score: {avg_f1:.4f}")
@@ -277,6 +296,10 @@ def sliding_window_eval(config, args, bs):
         f.write(f"F1 Score: {avg_f1:.4f}\n")
         f.write(f"EER: {avg_eer:.4f}\n")
         if "audio-video" in config.model.task:
+            f.write(f"Audio Accuracy: {audio_acc:.4f}\n")
+            f.write(f"Video Accuracy: {video_acc:.4f}\n")
+            f.write(f"Audio F1 Score: {audio_f1:.4f}\n")
+            f.write(f"Video F1 Score: {video_f1:.4f}\n")
             f.write(f"Average Audio EER: {audio_eer:.4f}\n")
             f.write(f"Average Video EER: {video_eer:.4f}\n")
 
