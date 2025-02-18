@@ -103,6 +103,7 @@ def get_multimodal_model_and_checkpoint(config, resume=True):
         video_config,
         audio_weights=audio_checkpoint["model_state_dict"],
         video_weights=video_checkpoint["model_state_dict"],
+        conv_fusion=config.model.conv_fusion,
     )
 
     return model, None
