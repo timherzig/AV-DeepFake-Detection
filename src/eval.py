@@ -204,12 +204,12 @@ def sliding_window_eval(config, args, bs):
                     y_pred = model(window)
 
                     if "audio-video" in config.model.task:
-                        a_pred = softmax(y_pred[:, 0], dim=1)
+                        a_pred = softmax(y_pred[0], dim=1)
                         softmaxes[0] = np.concatenate(
                             [softmaxes[0], a_pred[:, 1].cpu().detach().numpy()]
                         )
                         a_pred = torch.argmax(a_pred, dim=1).cpu().detach().numpy()
-                        v_pred = softmax(y_pred[:, 1], dim=1)
+                        v_pred = softmax(y_pred[1], dim=1)
                         softmaxes[1] = np.concatenate(
                             [softmaxes[1], v_pred[:, 1].cpu().detach().numpy()]
                         )
@@ -234,12 +234,12 @@ def sliding_window_eval(config, args, bs):
                     a_y = y[:, 0, 0].cpu().detach().numpy().astype(int)
                     v_y = y[:, 1, 0].cpu().detach().numpy().astype(int)
 
-                    # print(
-                    #     f" --- Audio ---\n{a_y[:10]}\n{predictions[0][:10]}\n{softmaxes[0][:10]}"
-                    # )
-                    # print(
-                    #     f" --- Video ---\n{v_y[:10]}\n{predictions[1][:10]}\n{softmaxes[1][:10]}"
-                    # )
+                    print(
+                        f" --- Audio ---\n{a_y[:20]}\n{predictions[0][:20]}\n{softmaxes[0][:20]}"
+                    )
+                    print(
+                        f" --- Video ---\n{v_y[:20]}\n{predictions[1][:20]}\n{softmaxes[1][:20]}"
+                    )
 
                     a_acc, a_f1, a_eer = calculate_metrics(
                         a_y, predictions[0], softmaxes[0]

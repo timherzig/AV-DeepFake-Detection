@@ -125,9 +125,9 @@ def train_epoch(
             y_pred = model(x)
 
             if "logits" not in config.train.loss:
-                if y_pred.dim() == 3:
-                    y_pred1 = softmax(y_pred[:, 0], dim=1)
-                    y_pred2 = softmax(y_pred[:, 1], dim=1)
+                if type(y_pred) is tuple:
+                    y_pred1 = softmax(y_pred[0], dim=1)
+                    y_pred2 = softmax(y_pred[1], dim=1)
 
                     loss1 = criterion(y_pred1, y[:, 0])
                     loss2 = criterion(y_pred2, y[:, 1])
@@ -192,9 +192,9 @@ def val_epoch(
                 y_pred = model(x)
 
                 if "logits" not in config.train.loss:
-                    if y_pred.dim() == 3:
-                        y_pred1 = softmax(y_pred[:, 0], dim=1)
-                        y_pred2 = softmax(y_pred[:, 1], dim=1)
+                    if type(y_pred) is tuple:
+                        y_pred1 = softmax(y_pred[0], dim=1)
+                        y_pred2 = softmax(y_pred[1], dim=1)
                         y_pred = torch.stack([y_pred1, y_pred2], dim=1)
 
                         loss1 = criterion(y_pred1, y[:, 0])
