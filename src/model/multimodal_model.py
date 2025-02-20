@@ -53,9 +53,9 @@ class Multimodal_Model(nn.Module):
             x = self.conv(av).squeeze(1)
             x = torch.relu(self.lin1(x))
             x = self.lin2(x)
-            x = x.reshape(-1, 2, 2)
+            a, v = torch.split(x, 2, dim=1)
 
-            return x
+            return (a, v)
 
         else:
             av = av.transpose(1, 2)
@@ -68,5 +68,5 @@ class Multimodal_Model(nn.Module):
             v = torch.relu(self.v_lin(v)).squeeze(2)
             v = self.v_out_layer(v)
 
-            av = torch.stack([a, v], dim=1)
-            return av
+            # av = torch.stack([a, v], dim=1)
+            return (a, v)

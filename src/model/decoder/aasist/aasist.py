@@ -614,6 +614,7 @@ class AASIST(nn.Module):
         output = self.out_layer(last_hidden)
 
         if "audio-video-ef" in self.config.model.task:
-            output = output.view(-1, 2, 2)
+            a, v = torch.split(output, 2, dim=1)
+            return (a, v)
 
         return output
