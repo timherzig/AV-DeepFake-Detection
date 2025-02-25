@@ -68,7 +68,7 @@ def get_paths(config, create_folders=True, evaluate=False, root=None):
     return root, log_dir, model_dir
 
 
-def get_multimodal_model_and_checkpoint(config, resume=True):
+def get_multimodal_model_and_checkpoint(config, model_dir, resume=True, eval=False):
     audio_config = get_config(config.model.audio_config)
     video_config = get_config(config.model.video_config)
 
@@ -84,6 +84,9 @@ def get_multimodal_model_and_checkpoint(config, resume=True):
         audio_checkpoint = torch.load(
             os.path.join(audio_model_dir, audio_checkpoints[-1])
         )
+        print(
+            f"Loaded audio checkpoint: {os.path.join(audio_model_dir, audio_checkpoints[-1])}"
+        )
 
     video_root, _, video_model_dir = get_paths(
         video_config, create_folders=False, evaluate=True, root=config.model.video_root
@@ -97,15 +100,33 @@ def get_multimodal_model_and_checkpoint(config, resume=True):
         video_checkpoint = torch.load(
             os.path.join(video_model_dir, video_checkpoints[-1])
         )
+        print(
+            f"Loaded video checkpoint: {os.path.join(video_model_dir, video_checkpoints[-1])}"
+        )
 
-    model = Multimodal_Model(
-        audio_config,
-        video_config,
-        audio_weights=audio_checkpoint["model_state_dict"],
-        video_weights=video_checkpoint["model_state_dict"],
-        conv_fusion=config.model.conv_fusion,
-    )
+    if not eval:
+        model = Multimodal_Model(
+            audio_config,
+            video_config,
+            audio_weights=audio_checkpoint["model_state_dict"],
+            video_weights=video_checkpoint["model_state_dict"],
+            conv_fusion=config.model.conv_fusion,
+        )
+    else:
+        model = Multimodal_Model(
+            audio_config,
+            video_config,
+            conv_fusion=config.model.conv_fusion,
+        )
 
+        if resume:
+            checkpoints = os.listdir(model_dir)
+            if len(checkpoints) > 0:
+                checkpoints = sorted(checkpoints, key=lambda x: int(x.split("_")[2]))
+                checkpoint = torch.load(os.path.join(model_dir, checkpoints[-1]))
+                model.load_state_dict(checkpoint["model_state_dict"])
+                print(f"Loaded checkpoint: {os.path.join(model_dir, checkpoints[-1])}")
+                return model, checkpoint
     return model, None
 
 

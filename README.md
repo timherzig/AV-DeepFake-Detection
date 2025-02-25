@@ -16,3 +16,6 @@ This repository contains the code for the paper "Utilizing Transitions to Locate
 ### Late fusion Multimodal
 ![Late fusion linear](docs/figures/model/audio-visual-model-lf-lin.png)
 ![Late fusion convolution](docs/figures/model/audio-visual-model-lf-conv.png)
+
+
+## Installation

@@ -36,7 +36,9 @@ def train(config, args):
     )
 
     if "audio-video-lf" in config.model.task:
-        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+        model, checkpoint = get_multimodal_model_and_checkpoint(
+            config, model_dir, args.resume
+        )
     else:
         model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
     optimizer, scheduler = get_optimizer_and_scheduler(model, config)

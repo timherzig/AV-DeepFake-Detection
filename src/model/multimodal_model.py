@@ -24,8 +24,10 @@ class Multimodal_Model(nn.Module):
 
         if audio_weights is not None:
             self.audio_model.load_state_dict(audio_weights)
+            print(f"Loaded audio weights")
         if video_weights is not None:
             self.video_model.load_state_dict(video_weights)
+            print(f"Loaded video weights")
 
         if self.conv_fusion:
             self.conv = nn.Conv1d(2, 1, 1)

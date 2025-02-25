@@ -155,9 +155,11 @@ def sliding_window_eval(config, args, bs):
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
     if "audio-video-lf" in config.model.task:
-        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+        model, checkpoint = get_multimodal_model_and_checkpoint(
+            config, model_dir, resume=True, eval=True
+        )
     else:
-        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
+        model, checkpoint = get_model_and_checkpoint(config, model_dir, resume=True)
 
     config.data.name = args.eval_ds
 
@@ -206,12 +208,12 @@ def sliding_window_eval(config, args, bs):
                     if "audio-video" in config.model.task:
                         a_pred = softmax(y_pred[0], dim=1)
                         softmaxes[0] = np.concatenate(
-                            [softmaxes[0], a_pred[:, 1].cpu().detach().numpy()]
+                            [softmaxes[0], a_pred[:, 0].cpu().detach().numpy()]
                         )
                         a_pred = torch.argmax(a_pred, dim=1).cpu().detach().numpy()
                         v_pred = softmax(y_pred[1], dim=1)
                         softmaxes[1] = np.concatenate(
-                            [softmaxes[1], v_pred[:, 1].cpu().detach().numpy()]
+                            [softmaxes[1], v_pred[:, 0].cpu().detach().numpy()]
                         )
                         v_pred = torch.argmax(v_pred, dim=1).cpu().detach().numpy()
 
@@ -225,7 +227,7 @@ def sliding_window_eval(config, args, bs):
                     else:
                         y_pred = softmax(y_pred, dim=1)
                         softmaxes = np.concatenate(
-                            [softmaxes, y_pred[:, 1].cpu().detach().numpy()]
+                            [softmaxes, y_pred[:, 0].cpu().detach().numpy()]
                         )
                         y_pred = torch.argmax(y_pred, dim=1).cpu().detach().numpy()
                         predictions = np.concatenate([predictions, y_pred.astype(int)])
@@ -234,12 +236,8 @@ def sliding_window_eval(config, args, bs):
                     a_y = y[:, 0, 0].cpu().detach().numpy().astype(int)
                     v_y = y[:, 1, 0].cpu().detach().numpy().astype(int)
 
-                    # print(
-                    #     f" --- Audio ---\n{a_y[:20]}\n{predictions[0][:20]}\n{softmaxes[0][:20]}"
-                    # )
-                    # print(
-                    #     f" --- Video ---\n{v_y[:20]}\n{predictions[1][:20]}\n{softmaxes[1][:20]}"
-                    # )
+                    predictions[0] = abs(predictions[0] - 1)
+                    predictions[1] = abs(predictions[1] - 1)
 
                     a_acc, a_f1, a_eer = calculate_metrics(
                         a_y, predictions[0], softmaxes[0]
@@ -260,7 +258,7 @@ def sliding_window_eval(config, args, bs):
                     video_eer += v_eer
                 else:
                     y = y[:, 0].cpu().detach().numpy().astype(int)
-                    # predictions = abs(predictions - 1)
+                    predictions = abs(predictions - 1)
                     acc, f1, eer = calculate_metrics(y, predictions, softmaxes)
 
                 avg_acc += acc
