@@ -33,7 +33,7 @@ def cut_audio(audio, fake_segments, config):
         start_end = random.randint(
             0, 1
         )  # 0 chooses the start, 1 the end of the fake segment
-        transition = (
+        transition = int(
             fake_segment[start_end] * sr + audio_frames
         )  # randomly chosen transition corrected for sample rate and the previous padding
 
@@ -45,7 +45,7 @@ def cut_audio(audio, fake_segments, config):
         if config.data.overlap_add:
             if random.random() <= config.data.overlap_add_prob:
                 crossfade_time = int(config.data.overlap_add_time * sr)
-                transition = int(transition * sr + audio_frames)
+                # transition = int(transition * sr + audio_frames)
 
                 start_audio = audio[:, 0 : int(transition - crossfade_time / 2)]
                 crossfade_audio_start = audio[
@@ -533,7 +533,7 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
         label = [[0.0, 1.0], [1.0, 0.0]]
 
     elif len(video_fake_segments) == 0:
-        transition = (
+        transition = int(
             random.choice(random.choice(audio_fake_segments)) * sr + audio_frames
         )
         if config.data.center_transition:
@@ -544,7 +544,7 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
         if config.data.overlap_add:
             if random.random() <= config.data.overlap_add_prob:
                 crossfade_time = int(config.data.overlap_add_time * sr)
-                transition = int(transition * sr + audio_frames)
+                # transition = int(transition * sr + audio_frames)
 
                 start_audio = audio[:, 0 : int(transition - crossfade_time / 2)]
                 crossfade_audio_start = audio[
@@ -593,7 +593,7 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
         label = [[1.0, 0.0], [0.0, 1.0]]
 
     else:
-        transition = (
+        transition = int(
             random.choice(random.choice(audio_fake_segments)) * sr + audio_frames
         )
         if config.data.center_transition:
@@ -604,7 +604,7 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
         if config.data.overlap_add:
             if random.random() <= config.data.overlap_add_prob:
                 crossfade_time = int(config.data.overlap_add_time * sr)
-                transition = int(transition * sr + audio_frames)
+                # transition = int(transition * sr + audio_frames)
 
                 start_audio = audio[:, 0 : int(transition - crossfade_time / 2)]
                 crossfade_audio_start = audio[
