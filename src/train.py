@@ -135,6 +135,10 @@ def train_epoch(
                     loss2 = criterion(y_pred2, y[:, 1])
 
                     loss = loss1 + loss2
+                    if i % 1000 == 0:
+                        print(
+                            f"Loss audio: {loss1} - Loss video: {loss2} - Total loss: {loss}"
+                        )
                 else:
                     y_pred = softmax(y_pred, dim=1)
                     loss = criterion(y_pred, y)

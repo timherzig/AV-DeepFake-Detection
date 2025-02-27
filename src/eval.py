@@ -282,10 +282,13 @@ def sliding_window_eval(config, args, bs):
         print(
             f" --- Audio ---\nAccuracy: {audio_acc:.4f}\nF1 Score: {audio_f1:.4f}\nEER: {audio_eer:.4f}"
         )
-
-    print(f"Accuracy: {avg_acc:.4f}")
-    print(f"F1 Score: {avg_f1:.4f}")
-    print(f"EER: {avg_eer:.4f}")
+        print(
+            f" --- Video ---\nAccuracy: {video_acc:.4f}\nF1 Score: {video_f1:.4f}\nEER: {video_eer:.4f}"
+        )
+    else:
+        print(f"Accuracy: {avg_acc:.4f}")
+        print(f"F1 Score: {avg_f1:.4f}")
+        print(f"EER: {avg_eer:.4f}")
 
     with open(
         f"{log_dir}/eval_results_{config.data.name}_sliding_window.txt", "w+"

@@ -34,13 +34,13 @@ class Multimodal_Model(nn.Module):
             self.lin1 = nn.Linear(160, 64)
             self.lin2 = nn.Linear(64, 4)
         else:
-            self.a_fc = nn.Linear(2, 2)
-            self.a_lin = nn.Linear(2, 1)
-            self.a_out_layer = nn.Linear(160, 2)
+            self.a_fc = nn.Linear(320, 160)
+            self.a_lin = nn.Linear(160, 80)
+            self.a_out_layer = nn.Linear(80, 2)
 
-            self.v_fc = nn.Linear(2, 2)
-            self.v_lin = nn.Linear(2, 1)
-            self.v_out_layer = nn.Linear(160, 2)
+            self.v_fc = nn.Linear(320, 160)
+            self.v_lin = nn.Linear(160, 80)
+            self.v_out_layer = nn.Linear(80, 2)
 
     def forward(self, x):
         a, v = x
@@ -49,7 +49,7 @@ class Multimodal_Model(nn.Module):
             a = self.audio_model(a, return_encoding=True).unsqueeze(1)
             v = self.video_model(v, return_encoding=True).unsqueeze(1)
 
-        av = torch.cat((a, v), dim=1)
+            av = torch.cat((a, v), dim=1)
 
         if self.conv_fusion:
             x = self.conv(av).squeeze(1)
@@ -60,15 +60,16 @@ class Multimodal_Model(nn.Module):
             return (a, v)
 
         else:
-            av = av.transpose(1, 2)
+            av = av.flatten(1)
 
             a = self.a_fc(av)
-            a = torch.relu(self.a_lin(a)).squeeze(2)
+            a = torch.relu(self.a_lin(a))
+            # a = self.a_lin(a)
             a = self.a_out_layer(a)
 
             v = self.v_fc(av)
-            v = torch.relu(self.v_lin(v)).squeeze(2)
+            v = torch.relu(self.v_lin(v))
+            # v = self.v_lin(v)
             v = self.v_out_layer(v)
 
-            # av = torch.stack([a, v], dim=1)
             return (a, v)
