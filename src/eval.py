@@ -9,8 +9,6 @@ import matplotlib.colors as mcolors
 from tqdm import tqdm
 from torch.nn.functional import softmax
 
-# from torch.utils._triton import has_triton
-
 from src.data.data import get_dataloaders
 from src.util.metrics import calculate_metrics
 from src.util.utils import (
@@ -25,17 +23,14 @@ np.set_printoptions(threshold=sys.maxsize)
 def transition_eval(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # if not has_triton():
-    #     raise RuntimeError("Triton is not available")
-
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
 
     if "audio-video-lf" in config.model.task:
-        model, checkpoint = get_multimodal_model_and_checkpoint(config, args.resume)
+        model, _ = get_multimodal_model_and_checkpoint(config, args.resume)
     else:
-        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
+        model, _ = get_model_and_checkpoint(config, model_dir, args.resume)
 
     config.data.name = args.eval_ds
 
@@ -100,10 +95,6 @@ def transition_eval(config, args):
                         [running_y_pred_softmax, softmax_predictions]
                     )
 
-    # tmp fix to avoid all neg predictions
-    # running_y_true = np.concatenate([running_y_true, np.array([1]), np.array([0])])
-    # running_y_pred = np.concatenate([running_y_pred, np.array([1]), np.array([0])])
-
     if "audio-video" in config.model.task:
         a_acc, a_f1, a_eer = calculate_metrics(
             running_y_true[0], running_y_pred[0], running_y_pred_softmax[0]
@@ -148,18 +139,15 @@ def sliding_window_eval(config, args, bs):
     config.train.batch_size = 1  # Sliding window only works with batch size 1
     config.data.step_size = args.step_size
 
-    # if not has_triton():
-    #     raise RuntimeError("Triton is not available")
-
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
     if "audio-video-lf" in config.model.task:
-        model, checkpoint = get_multimodal_model_and_checkpoint(
+        model, _ = get_multimodal_model_and_checkpoint(
             config, model_dir, resume=True, eval=True
         )
     else:
-        model, checkpoint = get_model_and_checkpoint(config, model_dir, resume=True)
+        model, _ = get_model_and_checkpoint(config, model_dir, resume=True)
 
     config.data.name = args.eval_ds
 
@@ -311,9 +299,6 @@ def single_sliding_window_eval(config, args, bs):
     config.train.batch_size = 1  # Sliding window only works with batch size 1
     config.data.step_size = args.step_size
 
-    # if not has_triton():
-    #     raise RuntimeError("Triton is not available")
-
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
@@ -385,11 +370,6 @@ def single_sliding_window_eval(config, args, bs):
                 os.makedirs(f"{log_dir}/{args.eval_ds}", exist_ok=True)
                 plot_results(f"{log_dir}/{args.eval_ds}", predictions, y, j, config)
 
-                # acc, f1, eer = calculate_metrics(y, predictions, softmax_predictions)
-                # print(f"Accuracy: {acc:.4f}")
-                # print(f"F1 Score: {f1:.4f}")
-                # print(f"EER: {eer:.4f}")
-
                 if j == 5:
                     break
 
@@ -397,9 +377,6 @@ def single_sliding_window_eval(config, args, bs):
 def single_transition_eval(config, args, num_samples=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config.data.sliding_window = False
-
-    # if not has_triton():
-    #     raise RuntimeError("Triton is not available")
 
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
@@ -464,7 +441,6 @@ def single_transition_eval(config, args, num_samples=10):
 
 def plot_results(save_file, predictions, y, j, config):
     time = np.arange(len(predictions))
-    # y = y * 0.2
 
     cmap = mcolors.LinearSegmentedColormap.from_list("", ["green", "red"])
     plt.figure(figsize=(10, 8))
@@ -472,19 +448,9 @@ def plot_results(save_file, predictions, y, j, config):
     plt.bar(
         time,
         predictions,
-        # linewidth=1,
-        # linestyle="--",
         color=cmap(predictions),
         label="Predictions",
     )
-
-    # plt.bar(
-    #     time,
-    #     y,
-    #     color="blue",
-    #     # linewidth=1,
-    #     label="Ground truth",
-    # )
 
     x_markers = time[y == 1]
     plt.scatter(

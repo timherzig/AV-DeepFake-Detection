@@ -6,7 +6,6 @@ from tqdm import tqdm
 from functools import partial
 from torch.nn.functional import softmax
 
-# from torch.utils._triton import has_triton
 from torch.utils.tensorboard import SummaryWriter
 
 from src.util.utils import (
@@ -16,7 +15,6 @@ from src.util.utils import (
     get_optimizer_and_scheduler,
     get_critierion,
     save_checkpoint,
-    use_grad,
 )
 
 from src.data.data import get_dataloaders
@@ -27,7 +25,7 @@ from src.util.metrics import calculate_metrics
 def train(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    root, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
+    _, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
 
     writer = SummaryWriter(log_dir=log_dir)
 
@@ -36,11 +34,9 @@ def train(config, args):
     )
 
     if "audio-video-lf" in config.model.task:
-        model, checkpoint = get_multimodal_model_and_checkpoint(
-            config, model_dir, args.resume
-        )
+        model, _ = get_multimodal_model_and_checkpoint(config, model_dir, args.resume)
     else:
-        model, checkpoint = get_model_and_checkpoint(config, model_dir, args.resume)
+        model, _ = get_model_and_checkpoint(config, model_dir, args.resume)
     optimizer, scheduler = get_optimizer_and_scheduler(model, config)
     criterion = get_critierion(config)
 
@@ -51,7 +47,7 @@ def train(config, args):
     print(f"Starting training on {device}")
 
     for epoch in range(1, config.train.num_epochs + 1):
-        train_loss = train_epoch(
+        _ = train_epoch(
             model,
             criterion,
             optimizer,
