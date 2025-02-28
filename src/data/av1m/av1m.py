@@ -45,7 +45,6 @@ def cut_audio(audio, fake_segments, config):
         if config.data.overlap_add:
             if random.random() <= config.data.overlap_add_prob:
                 crossfade_time = int(config.data.overlap_add_time * sr)
-                # transition = int(transition * sr + audio_frames)
 
                 start_audio = audio[:, 0 : int(transition - crossfade_time / 2)]
                 crossfade_audio_start = audio[
@@ -81,12 +80,7 @@ def cut_audio(audio, fake_segments, config):
 
                 audio = torch.cat((start_audio, crossfade_audio, end_audio), dim=1)
 
-                start = floor(
-                    transition
-                    - (crossfade_time // 2)
-                    - audio_frames // 2
-                    + audio_frames
-                )
+                start = floor(transition - (crossfade_time // 2) - audio_frames // 2)
 
         audio = audio[:, start : start + audio_frames]
         label = [1.0, 0.0]
@@ -544,7 +538,6 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
         if config.data.overlap_add:
             if random.random() <= config.data.overlap_add_prob:
                 crossfade_time = int(config.data.overlap_add_time * sr)
-                # transition = int(transition * sr + audio_frames)
 
                 start_audio = audio[:, 0 : int(transition - crossfade_time / 2)]
                 crossfade_audio_start = audio[
@@ -581,10 +574,7 @@ def cut_audio_video(audio, video, audio_fake_segments, video_fake_segments, conf
                 audio = torch.cat((start_audio, crossfade_audio, end_audio), dim=1)
 
                 start_time = floor(
-                    transition
-                    - (crossfade_time // 2)
-                    - audio_frames // 2
-                    + audio_frames
+                    transition - (crossfade_time // 2) - audio_frames // 2
                 )
 
         audio = audio[:, start_time : start_time + audio_frames]
