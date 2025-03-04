@@ -18,7 +18,7 @@ data:
   fps: 25
   center_transition: True # If True, the transition is centered in the cut segment
   overlap_add: True # Artificially adds cut samples that use the overlap add method
-  overlap_add_prob: 0.25
+  overlap_add_prob: 0.50
   overlap_add_time: 0.02 # seconds = 20ms
   window_size: 8 # frames
   sliding_window: False
