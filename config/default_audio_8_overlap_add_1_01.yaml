@@ -1,10 +1,9 @@
 model:
-  task: 'audio-video-ef'
-  encoder: 'config/encoder/default_audio-video.yaml'
-  encoder_freeze: True
+  task: 'audio' # 'audio' or 'video' or 'audio_video'
+  encoder: 'config/encoder/default_wavlm.yaml'
+  encoder_freeze: False
   decoder: 'config/decoder/default_aasist.yaml'
   online_encoding: True
-  crossattention: True
 
 data:
   name: 'av1m' # 'av1m' or 'partialspoof' or 'halftruth'
@@ -20,7 +19,7 @@ data:
   center_transition: True # If True, the transition is centered in the cut segment
   overlap_add: True # Artificially adds cut samples that use the overlap add method
   overlap_add_prob: 1
-  overlap_add_time: 0.02 # seconds = 20ms
+  overlap_add_time: 0.1 # seconds = 100ms
   window_size: 8 # frames
   sliding_window: False
 

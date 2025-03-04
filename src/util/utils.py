@@ -106,6 +106,7 @@ def get_multimodal_model_and_checkpoint(config, model_dir, resume=True, eval=Fal
 
     if not eval:
         model = Multimodal_Model(
+            config,
             audio_config,
             video_config,
             audio_weights=audio_checkpoint["model_state_dict"],
@@ -114,6 +115,7 @@ def get_multimodal_model_and_checkpoint(config, model_dir, resume=True, eval=Fal
         )
     else:
         model = Multimodal_Model(
+            config,
             audio_config,
             video_config,
             conv_fusion=config.model.conv_fusion,

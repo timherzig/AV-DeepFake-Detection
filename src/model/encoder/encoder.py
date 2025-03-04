@@ -4,6 +4,8 @@ import torch.nn as nn
 from torch.nn.functional import pad
 from collections import OrderedDict
 
+from src.model.bidirectional_cross_attention import BidirectionalCrossAttention
+
 
 class Encoder(nn.Module):
     def __init__(self, config):
@@ -85,7 +87,7 @@ class Encoder(nn.Module):
 
                 self.encoder = JPEG(self.config)
 
-        if "audio-video" in self.config.model.task:
+        if "audio-video-ef" in self.config.model.task:
             # AUDIO
             audio_encoder = None
 
@@ -123,8 +125,13 @@ class Encoder(nn.Module):
 
             self.encoder = nn.ModuleList([audio_encoder, video_encoder])
 
+            if self.config.model.crossattention:
+                self.cross_attention = BidirectionalCrossAttention(
+                    dim=768, heads=8, dim_head=64, context_dim=192
+                )
+
     def forward(self, x):
-        if "audio-video" in self.config.model.task:
+        if "audio-video-ef" in self.config.model.task:
             audio_x, video_x = x
 
             audio_x = self.encoder[0](audio_x)
@@ -134,6 +141,9 @@ class Encoder(nn.Module):
                 video_x = pad(video_x, (0, 0, 0, audio_x.shape[1] - video_x.shape[1]))
             elif audio_x.shape[1] < video_x.shape[1]:
                 audio_x = pad(audio_x, (0, 0, 0, video_x.shape[1] - audio_x.shape[1]))
+
+            if self.config.model.crossattention:
+                audio_x, video_x = self.cross_attention(audio_x, video_x)
 
             audio_x = audio_x.permute(2, 0, 1)
             video_x = video_x.permute(2, 0, 1)

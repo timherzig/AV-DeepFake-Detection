@@ -11,6 +11,7 @@ model:
   online_encoding: True
   encoder_freeze: True
   conv_fusion: False
+  crossattention: True
 
 data:
   name: 'av1m' # 'av1m' or 'partialspoof' or 'halftruth'

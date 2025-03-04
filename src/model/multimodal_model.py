@@ -2,10 +2,13 @@ import torch
 from torch import nn
 from src.model.model import Model
 
+from src.model.bidirectional_cross_attention import BidirectionalCrossAttention
+
 
 class Multimodal_Model(nn.Module):
     def __init__(
         self,
+        config,
         audio_config,
         video_config,
         audio_weights=None,
@@ -14,6 +17,7 @@ class Multimodal_Model(nn.Module):
     ):
         super(Multimodal_Model, self).__init__()
 
+        self.config = config
         self.audio_config = audio_config
         self.video_config = video_config
 
@@ -25,9 +29,21 @@ class Multimodal_Model(nn.Module):
         if audio_weights is not None:
             self.audio_model.load_state_dict(audio_weights)
             print(f"Loaded audio weights")
+            for param in self.audio_model.parameters():
+                param.requires_grad = False
         if video_weights is not None:
             self.video_model.load_state_dict(video_weights)
             print(f"Loaded video weights")
+            for param in self.video_model.parameters():
+                param.requires_grad = False
+
+        if self.config.model.crossattention:
+            self.cross_attention = BidirectionalCrossAttention(
+                dim=160, heads=8, dim_head=64, context_dim=160
+            )
+            # self.cross_attention_v = BidirectionalCrossAttention(
+            #     dim=160, heads=8, dim_head=64, context_dim=160
+            # )
 
         if self.conv_fusion:
             self.conv = nn.Conv1d(2, 1, 1)
@@ -45,11 +61,13 @@ class Multimodal_Model(nn.Module):
     def forward(self, x):
         a, v = x
 
-        with torch.no_grad():
-            a = self.audio_model(a, return_encoding=True).unsqueeze(1)
-            v = self.video_model(v, return_encoding=True).unsqueeze(1)
+        a = self.audio_model(a, return_encoding=True).unsqueeze(1)
+        v = self.video_model(v, return_encoding=True).unsqueeze(1)
 
-            av = torch.cat((a, v), dim=1)
+        if self.config.model.crossattention:
+            ca, cv = self.cross_attention(a, v)
+
+        av = torch.cat((ca, cv), dim=1)
 
         if self.conv_fusion:
             x = self.conv(av).squeeze(1)
