@@ -26,6 +26,7 @@ def train(config, args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     _, log_dir, model_dir = get_paths(config, create_folders=not args.resume)
+    print(f"Log dir: {log_dir}")
 
     writer = SummaryWriter(log_dir=log_dir)
 

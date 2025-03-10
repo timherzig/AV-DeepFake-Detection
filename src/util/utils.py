@@ -33,6 +33,10 @@ def get_paths(config, create_folders=True, evaluate=False, root=None):
     # model_dir : str
     #     Model directory
 
+    print(
+        f"Getting paths, create_folders: {create_folders}, evaluate: {evaluate}, root: {root}"
+    )
+
     if root is None:
         root = os.path.join(
             "checkpoints",
