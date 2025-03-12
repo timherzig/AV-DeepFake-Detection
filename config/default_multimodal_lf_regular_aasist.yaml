@@ -4,14 +4,15 @@ model:
     name: 'wavlm-videomamba'
   decoder:
     name: 'aasist'
-  audio_config: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_002/config.yaml'
-  audio_root: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_002'
+  audio_config: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_002_1/config.yaml'
+  audio_root: 'checkpoints/av1m/audio/decoder_aasist/encoder_wavlm/8_oa1_002_1'
   video_config: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8/config.yaml'
   video_root: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8'
   online_encoding: True
   encoder_freeze: True
   conv_fusion: False
-  crossattention: True
+  crossattention: False
+  regular_aasist: True
 
 data:
   name: 'av1m' # 'av1m' or 'partialspoof' or 'halftruth'

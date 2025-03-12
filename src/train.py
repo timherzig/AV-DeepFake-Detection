@@ -123,28 +123,52 @@ def train_epoch(
             optimizer.zero_grad()
             y_pred = model(x)
 
-            if "logits" not in config.train.loss:
-                if type(y_pred) is tuple:
-                    y_pred1 = softmax(y_pred[0], dim=1)
-                    y_pred2 = softmax(y_pred[1], dim=1)
+            if "model.regular_aasist" in config and config.model.regular_aasist:
+                y_pred1 = softmax(y_pred[0], dim=1)
+                y_pred2 = softmax(y_pred[1], dim=1)
 
-                    loss1 = criterion(y_pred1, y[:, 0])
-                    loss2 = criterion(y_pred2, y[:, 1])
+                loss1 = criterion(y_pred1, y[:, 0])
+                loss2 = criterion(y_pred2, y[:, 1])
 
-                    loss = loss1 + loss2
-                    if i % 1000 == 0:
-                        print(
-                            f"Loss audio: {loss1} - Loss video: {loss2} - Total loss: {loss}"
-                        )
-                else:
-                    y_pred = softmax(y_pred, dim=1)
-                    loss = criterion(y_pred, y)
+                loss1.backward()
+                loss2.backward()
+                optimizer.step()
+                running_loss += loss1.item() + loss2.item()
+                running_loss = logger(i, running_loss, pbar, train_len)
+            else:
+                if "logits" not in config.train.loss:
+                    if type(y_pred) is tuple:
+                        y_pred1 = softmax(y_pred[0], dim=1)
+                        y_pred2 = softmax(y_pred[1], dim=1)
 
-            loss.backward()
-            optimizer.step()
+                        if "train.loss_modality" in config:
+                            if config.train.loss_modality == "audio-video":
+                                loss1 = criterion(y_pred1, y[:, 0])
+                                loss2 = criterion(y_pred2, y[:, 1])
+                            elif config.train.loss_modality == "audio":
+                                loss1 = criterion(y_pred1, y[:, 0])
+                                loss2 = 0
+                            elif config.train.loss_modality == "video":
+                                loss1 = 0
+                                loss2 = criterion(y_pred2, y[:, 1])
+                        else:
+                            loss1 = criterion(y_pred1, y[:, 0])
+                            loss2 = criterion(y_pred2, y[:, 1])
 
-            running_loss += loss.item()
-            running_loss = logger(i, running_loss, pbar, train_len)
+                        loss = loss1 + loss2
+                        if i % 1000 == 0:
+                            print(
+                                f"Loss audio: {loss1} - Loss video: {loss2} - Total loss: {loss}"
+                            )
+                    else:
+                        y_pred = softmax(y_pred, dim=1)
+                        loss = criterion(y_pred, y)
+
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item()
+                running_loss = logger(i, running_loss, pbar, train_len)
 
     return running_loss
 
@@ -194,19 +218,37 @@ def val_epoch(
             with torch.no_grad():
                 y_pred = model(x)
 
-                if "logits" not in config.train.loss:
-                    if type(y_pred) is tuple:
-                        y_pred1 = softmax(y_pred[0], dim=1)
-                        y_pred2 = softmax(y_pred[1], dim=1)
-                        y_pred = torch.stack([y_pred1, y_pred2], dim=1)
+                if "model.regular_aasist" in config and config.model.regular_aasist:
+                    y_pred1 = softmax(y_pred[0], dim=1)
+                    y_pred2 = softmax(y_pred[1], dim=1)
 
-                        loss1 = criterion(y_pred1, y[:, 0])
-                        loss2 = criterion(y_pred2, y[:, 1])
+                    loss1 = criterion(y_pred1, y[:, 0])
+                    loss2 = criterion(y_pred2, y[:, 1])
+                else:
+                    if "logits" not in config.train.loss:
+                        if type(y_pred) is tuple:
+                            y_pred1 = softmax(y_pred[0], dim=1)
+                            y_pred2 = softmax(y_pred[1], dim=1)
+                            y_pred = torch.stack([y_pred1, y_pred2], dim=1)
 
-                        loss = loss1 + loss2
-                    else:
-                        y_pred = softmax(y_pred, dim=1)
-                        loss = criterion(y_pred, y)
+                            if "train.loss_modality" in config:
+                                if config.train.loss_modality == "audio-video":
+                                    loss1 = criterion(y_pred1, y[:, 0])
+                                    loss2 = criterion(y_pred2, y[:, 1])
+                                elif config.train.loss_modality == "audio":
+                                    loss1 = criterion(y_pred1, y[:, 0])
+                                    loss2 = 0
+                                elif config.train.loss_modality == "video":
+                                    loss1 = 0
+                                    loss2 = criterion(y_pred2, y[:, 1])
+                            else:
+                                loss1 = criterion(y_pred1, y[:, 0])
+                                loss2 = criterion(y_pred2, y[:, 1])
+
+                            loss = loss1 + loss2
+                        else:
+                            y_pred = softmax(y_pred, dim=1)
+                            loss = criterion(y_pred, y)
 
             # y_pred = softmax(y_pred, dim=1)
             y_softmax = y_pred[:, 0].cpu().detach().numpy()

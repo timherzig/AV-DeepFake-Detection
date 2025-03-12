@@ -49,6 +49,9 @@ class Multimodal_Model(nn.Module):
             self.conv = nn.Conv1d(2, 1, 1)
             self.lin1 = nn.Linear(160, 64)
             self.lin2 = nn.Linear(64, 4)
+        elif self.config.model.regular_aasist:
+            self.out_layer_a = nn.Linear(160, 2)
+            self.out_layer_v = nn.Linear(160, 2)
         else:
             self.a_fc = nn.Linear(320, 160)
             self.a_lin = nn.Linear(160, 80)
@@ -61,8 +64,17 @@ class Multimodal_Model(nn.Module):
     def forward(self, x):
         a, v = x
 
-        a = self.audio_model(a, return_encoding=True).unsqueeze(1)
-        v = self.video_model(v, return_encoding=True).unsqueeze(1)
+        a = self.audio_model(a, return_encoding=True)
+        v = self.video_model(v, return_encoding=True)
+
+        if self.config.model.regular_aasist:
+            a = self.out_layer_a(a)
+            v = self.out_layer_v(v)
+
+            return (a, v)
+
+        a = a.unsqueeze(1)
+        v = v.unsqueeze(1)
 
         if self.config.model.crossattention:
             ca, cv = self.cross_attention(a, v)
@@ -76,7 +88,6 @@ class Multimodal_Model(nn.Module):
             a, v = torch.split(x, 2, dim=1)
 
             return (a, v)
-
         else:
             av = av.flatten(1)
 
