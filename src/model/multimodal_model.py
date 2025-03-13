@@ -29,13 +29,15 @@ class Multimodal_Model(nn.Module):
         if audio_weights is not None:
             self.audio_model.load_state_dict(audio_weights)
             print(f"Loaded audio weights")
-            for param in self.audio_model.parameters():
-                param.requires_grad = False
+            if self.config.model.encoder_freeze:
+                for param in self.audio_model.parameters():
+                    param.requires_grad = False
         if video_weights is not None:
             self.video_model.load_state_dict(video_weights)
             print(f"Loaded video weights")
-            for param in self.video_model.parameters():
-                param.requires_grad = False
+            if self.config.model.encoder_freeze:
+                for param in self.video_model.parameters():
+                    param.requires_grad = False
 
         if self.config.model.crossattention:
             self.cross_attention = BidirectionalCrossAttention(
@@ -78,6 +80,8 @@ class Multimodal_Model(nn.Module):
 
         if self.config.model.crossattention:
             ca, cv = self.cross_attention(a, v)
+            ca = ca.squeeze(1)
+            cv = cv.squeeze(1)
 
         av = torch.cat((ca, cv), dim=1)
 
@@ -89,8 +93,6 @@ class Multimodal_Model(nn.Module):
 
             return (a, v)
         else:
-            av = av.flatten(1)
-
             a = self.a_fc(av)
             a = torch.relu(self.a_lin(a))
             # a = self.a_lin(a)

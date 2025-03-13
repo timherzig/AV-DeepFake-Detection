@@ -9,7 +9,7 @@ model:
   video_config: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8/config.yaml'
   video_root: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8'
   online_encoding: True
-  encoder_freeze: True
+  encoder_freeze: False
   conv_fusion: False
   crossattention: False
   regular_aasist: True
@@ -38,7 +38,7 @@ train:
   num_epochs: 15
   optimizer: "adam"
   scheduler: "step"
-  lr: 0.0001
+  lr: 0.000001
   step_size: 1
   gamma: 0.1
   loss: "bce"
