@@ -47,6 +47,10 @@ def train(config, args):
 
     print(f"Starting training on {device}")
 
+    print(
+        f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}"
+    )
+
     for epoch in range(1, config.train.num_epochs + 1):
         _ = train_epoch(
             model,
