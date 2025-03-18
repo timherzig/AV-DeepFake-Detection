@@ -9,7 +9,7 @@ model:
   video_config: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8/config.yaml'
   video_root: 'checkpoints/av1m/video/decoder_aasist/encoder_videomamba/8'
   online_encoding: True
-  encoder_freeze: False
+  encoder_freeze: True
   conv_fusion: False
   crossattention: False
   regular_aasist: True

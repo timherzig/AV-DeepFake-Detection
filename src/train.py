@@ -39,7 +39,12 @@ def train(config, args):
     else:
         model, _ = get_model_and_checkpoint(config, model_dir, args.resume)
     optimizer, scheduler = get_optimizer_and_scheduler(model, config)
-    criterion = get_critierion(config)
+    if "audio-video" in config.model.task:
+        audio_criterion = get_critierion(config)
+        video_criterion = get_critierion(config)
+        criterion = (audio_criterion, video_criterion)
+    else:
+        criterion = get_critierion(config)
 
     model.to(device)
 
@@ -131,8 +136,10 @@ def train_epoch(
                 y_pred1 = softmax(y_pred[0], dim=1)
                 y_pred2 = softmax(y_pred[1], dim=1)
 
-                loss1 = criterion(y_pred1, y[:, 0])
-                loss2 = criterion(y_pred2, y[:, 1])
+                audio_crit = criterion[0]
+                video_crit = criterion[1]
+                loss1 = audio_crit(y_pred1, y[:, 0])
+                loss2 = video_crit(y_pred2, y[:, 1])
 
                 loss1.backward()
                 loss2.backward()
@@ -145,19 +152,22 @@ def train_epoch(
                         y_pred1 = softmax(y_pred[0], dim=1)
                         y_pred2 = softmax(y_pred[1], dim=1)
 
+                        audio_crit = criterion[0]
+                        video_crit = criterion[1]
+
                         if "train.loss_modality" in config:
                             if config.train.loss_modality == "audio-video":
-                                loss1 = criterion(y_pred1, y[:, 0])
-                                loss2 = criterion(y_pred2, y[:, 1])
+                                loss1 = audio_crit(y_pred1, y[:, 0])
+                                loss2 = video_crit(y_pred2, y[:, 1])
                             elif config.train.loss_modality == "audio":
-                                loss1 = criterion(y_pred1, y[:, 0])
+                                loss1 = audio_crit(y_pred1, y[:, 0])
                                 loss2 = 0
                             elif config.train.loss_modality == "video":
                                 loss1 = 0
-                                loss2 = criterion(y_pred2, y[:, 1])
+                                loss2 = video_crit(y_pred2, y[:, 1])
                         else:
-                            loss1 = criterion(y_pred1, y[:, 0])
-                            loss2 = criterion(y_pred2, y[:, 1])
+                            loss1 = audio_crit(y_pred1, y[:, 0])
+                            loss2 = video_crit(y_pred2, y[:, 1])
 
                         loss = loss1 + loss2
                         if i % 1000 == 0:
@@ -226,8 +236,10 @@ def val_epoch(
                     y_pred1 = softmax(y_pred[0], dim=1)
                     y_pred2 = softmax(y_pred[1], dim=1)
 
-                    loss1 = criterion(y_pred1, y[:, 0])
-                    loss2 = criterion(y_pred2, y[:, 1])
+                    audio_crit = criterion[0]
+                    video_crit = criterion[1]
+                    loss1 = audio_crit(y_pred1, y[:, 0])
+                    loss2 = video_crit(y_pred2, y[:, 1])
                 else:
                     if "logits" not in config.train.loss:
                         if type(y_pred) is tuple:
@@ -235,19 +247,22 @@ def val_epoch(
                             y_pred2 = softmax(y_pred[1], dim=1)
                             y_pred = torch.stack([y_pred1, y_pred2], dim=1)
 
+                            audio_crit = criterion[0]
+                            video_crit = criterion[1]
+
                             if "train.loss_modality" in config:
                                 if config.train.loss_modality == "audio-video":
-                                    loss1 = criterion(y_pred1, y[:, 0])
-                                    loss2 = criterion(y_pred2, y[:, 1])
+                                    loss1 = audio_crit(y_pred1, y[:, 0])
+                                    loss2 = video_crit(y_pred2, y[:, 1])
                                 elif config.train.loss_modality == "audio":
-                                    loss1 = criterion(y_pred1, y[:, 0])
+                                    loss1 = audio_crit(y_pred1, y[:, 0])
                                     loss2 = 0
                                 elif config.train.loss_modality == "video":
                                     loss1 = 0
-                                    loss2 = criterion(y_pred2, y[:, 1])
+                                    loss2 = video_crit(y_pred2, y[:, 1])
                             else:
-                                loss1 = criterion(y_pred1, y[:, 0])
-                                loss2 = criterion(y_pred2, y[:, 1])
+                                loss1 = audio_crit(y_pred1, y[:, 0])
+                                loss2 = video_crit(y_pred2, y[:, 1])
 
                             loss = loss1 + loss2
                         else:
