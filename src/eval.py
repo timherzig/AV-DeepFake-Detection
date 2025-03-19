@@ -302,7 +302,8 @@ def single_sliding_window_eval(config, args, bs):
     _, log_dir, model_dir = get_paths(
         config, create_folders=False, evaluate=True, root=args.eval_root
     )
-    model, _ = get_model_and_checkpoint(config, model_dir, True)
+    print(f"Loading model from {model_dir}")
+    model, _ = get_model_and_checkpoint(config, model_dir, resume=True)
 
     config.data.name = args.eval_ds
 

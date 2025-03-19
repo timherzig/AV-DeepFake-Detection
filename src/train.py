@@ -112,6 +112,7 @@ def train_epoch(
     logger = partial(log_train_step, config=config, epoch=epoch, writer=writer)
     running_loss = 0.0
 
+    print(f"Epoch {epoch} - Training")
     with tqdm(
         train_dl, total=math.ceil(train_len / config.train.batch_size), unit="b"
     ) as pbar:
