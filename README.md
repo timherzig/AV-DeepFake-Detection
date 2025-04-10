@@ -9,13 +9,13 @@ This repository contains the code for the paper "Utilizing Transitions to Locate
 ![Audio-only](docs/figures/model/audio-model.png)
 
 ### Visual-only
-![Visual-only](docs/figures/model/visual-model.png)
+![Visual-only](docs/figures/model/video-model.png)
 
 ### Early fusion Multimodal
-![Early fusion](docs/figures/model/audio-visual-model-ef.png)
+![Early fusion](docs/figures/model/audio-visual-model-ef-ca.png)
 ### Late fusion Multimodal
-![Late fusion linear](docs/figures/model/audio-visual-model-lf-lin.png)
-![Late fusion convolution](docs/figures/model/audio-visual-model-lf-conv.png)
+![Late fusion linear](docs/figures/model/audio-visual-model-lf-lin-ca.png)
+<!-- ![Late fusion convolution](docs/figures/model/audio-visual-model-lf-conv.png) -->
 
 
 ## Installation
