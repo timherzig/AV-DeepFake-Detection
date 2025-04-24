@@ -168,3 +168,4 @@ decoder_checkpoints/
 clustering/
 tmp_samples/
 download/
+download_checkpoint.tar.gz
